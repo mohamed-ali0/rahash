@@ -3,6 +3,46 @@
 // Global variables
 let currentLanguage = 'ar';
 
+// Global function to safely close modals and restore scrolling
+function closeModalAndRestoreScroll(modal) {
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+        document.body.style.overflowY = '';
+    }
+}
+
+// Global function to safely open modals and disable scrolling
+function openModalAndDisableScroll(modal) {
+    if (modal) {
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        // Add click handler to close modal
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal || e.target.classList.contains('expanded-close') || e.target.classList.contains('modal-close')) {
+                closeModalAndRestoreScroll(modal);
+            }
+        });
+    }
+}
+
+// Emergency function to restore scrolling if page gets frozen
+function emergencyRestoreScroll() {
+    document.body.style.overflow = '';
+    document.body.style.overflowY = '';
+    // Remove any stuck modals
+    const modals = document.querySelectorAll('.expanded-modal, .fullscreen-image-modal, .modal-overlay');
+    modals.forEach(modal => modal.remove());
+}
+
+// Add emergency scroll restore on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Restore scroll on page load in case it was frozen
+    emergencyRestoreScroll();
+});
+
 // Sidebar functionality
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
@@ -701,6 +741,9 @@ const ClientManager = {
                 // Extract unique regions and populate filter
                 this.populateRegionFilter(clients);
                 
+                // Extract unique salesmen and populate filter
+                this.populateSalesmanFilter(clients);
+                
                 this.displayClients(clients);
                 
                 // Update status indicator
@@ -731,6 +774,37 @@ const ClientManager = {
             option.textContent = region;
             regionFilter.appendChild(option);
         });
+    },
+    
+    populateSalesmanFilter: function(clients) {
+        const salesmanFilter = document.getElementById('salesmanFilter');
+        if (!salesmanFilter) {
+            console.error('Salesman filter element not found');
+            return;
+        }
+        
+        // Extract unique salesmen
+        const salesmen = [...new Set(clients.map(client => client.salesman_name).filter(salesman => salesman && salesman.trim() !== ''))];
+        this.allSalesmen = salesmen;
+        
+        // Clear existing options completely
+        salesmanFilter.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = currentLanguage === 'ar' ? 'جميع المندوبين' : 'All Salesmen';
+        salesmanFilter.appendChild(defaultOption);
+        
+        // Add salesman options
+        salesmen.forEach(salesman => {
+            const option = document.createElement('option');
+            option.value = salesman;
+            option.textContent = salesman;
+            salesmanFilter.appendChild(option);
+        });
+        
+        console.log('Salesman filter populated with:', salesmen);
     },
     
     displayClients: function(clients) {
@@ -804,7 +878,7 @@ const ClientManager = {
         }
     },
     
-    filterClients: function(searchTerm = '', selectedRegion = '') {
+    filterClients: function(searchTerm = '', selectedRegion = '', selectedSalesman = '') {
         let filteredClients = this.currentClients;
         
         // Filter by search term
@@ -819,6 +893,11 @@ const ClientManager = {
         // Filter by region
         if (selectedRegion.trim()) {
             filteredClients = filteredClients.filter(client => client.region === selectedRegion);
+        }
+        
+        // Filter by salesman
+        if (selectedSalesman.trim()) {
+            filteredClients = filteredClients.filter(client => client.salesman_name === selectedSalesman);
         }
         
         this.displayClients(filteredClients);
@@ -1009,9 +1088,7 @@ const ClientManager = {
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        openModalAndDisableScroll(modal);
     },
     
     viewClientImage: function(imageData, clientName) {
@@ -1541,25 +1618,67 @@ const ClientManager = {
     },
     
     copyPhone: function(phone) {
+        console.log('copyPhone called with:', phone);
+        
         if (phone && phone.trim()) {
+            // Copy to clipboard first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(phone).then(() => {
+                    console.log('Phone copied to clipboard');
+                    // Show success message
+                    alert(currentLanguage === 'ar' ? `تم نسخ الرقم: ${phone}` : `Phone copied: ${phone}`);
+                }).catch((error) => {
+                    console.log('Clipboard API failed:', error);
+                    this.fallbackCopyPhone(phone);
+                });
+            } else {
+                this.fallbackCopyPhone(phone);
+            }
+            
+            // Open dialer
             const normalized = phone.replace(/[^\d+]/g, '');
             const telUrl = `tel:${normalized}`;
-            navigator.clipboard.writeText(phone).then(() => {
-                // Open dialer after copying
-                setTimeout(() => { window.location.href = telUrl; }, 50);
-            }).catch(() => {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = phone;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                setTimeout(() => { window.location.href = telUrl; }, 50);
-            });
+            console.log('Opening dialer with URL:', telUrl);
+            
+            // Try to open dialer
+            try {
+                window.location.href = telUrl;
+            } catch (error) {
+                console.log('Failed to open dialer:', error);
+                // Fallback: just copy the number
+                this.fallbackCopyPhone(phone);
+            }
         } else {
+            console.log('No phone number provided');
             alert(currentLanguage === 'ar' ? 'لا يوجد رقم هاتف' : 'No phone number available');
         }
+    },
+    
+    fallbackCopyPhone: function(phone) {
+        const textArea = document.createElement('textarea');
+        textArea.value = phone;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                console.log('Phone copied via fallback');
+                alert(currentLanguage === 'ar' ? `تم نسخ الرقم: ${phone}` : `Phone copied: ${phone}`);
+            } else {
+                console.log('Fallback copy failed');
+                alert(currentLanguage === 'ar' ? `الرقم: ${phone}` : `Phone: ${phone}`);
+            }
+        } catch (error) {
+            console.log('Fallback copy error:', error);
+            alert(currentLanguage === 'ar' ? `الرقم: ${phone}` : `Phone: ${phone}`);
+        }
+        
+        document.body.removeChild(textArea);
     },
     
     openLocation: function(location) {
@@ -3308,13 +3427,15 @@ function setupSearch() {
 function setupClientSearch() {
     const clientSearchInput = document.getElementById('clientSearch');
     const regionFilter = document.getElementById('regionFilter');
+    const salesmanFilter = document.getElementById('salesmanFilter');
     const statusFilter = document.getElementById('clientStatusFilter');
     
     if (clientSearchInput) {
         clientSearchInput.addEventListener('input', function(e) {
             const searchTerm = e.target.value;
             const selectedRegion = regionFilter ? regionFilter.value : '';
-            ClientManager.filterClients(searchTerm, selectedRegion);
+            const selectedSalesman = salesmanFilter ? salesmanFilter.value : '';
+            ClientManager.filterClients(searchTerm, selectedRegion, selectedSalesman);
         });
     }
     
@@ -3322,7 +3443,17 @@ function setupClientSearch() {
         regionFilter.addEventListener('change', function(e) {
             const selectedRegion = e.target.value;
             const searchTerm = clientSearchInput ? clientSearchInput.value : '';
-            ClientManager.filterClients(searchTerm, selectedRegion);
+            const selectedSalesman = salesmanFilter ? salesmanFilter.value : '';
+            ClientManager.filterClients(searchTerm, selectedRegion, selectedSalesman);
+        });
+    }
+    
+    if (salesmanFilter) {
+        salesmanFilter.addEventListener('change', function(e) {
+            const selectedSalesman = e.target.value;
+            const searchTerm = clientSearchInput ? clientSearchInput.value : '';
+            const selectedRegion = regionFilter ? regionFilter.value : '';
+            ClientManager.filterClients(searchTerm, selectedRegion, selectedSalesman);
         });
     }
     
@@ -3335,9 +3466,10 @@ function setupClientSearch() {
             const selectedStatus = e.target.value;
             // Save filter preference
             localStorage.setItem('clientStatusFilter', selectedStatus);
-            // Clear search and region filters when changing status
+            // Clear search, region, and salesman filters when changing status
             if (clientSearchInput) clientSearchInput.value = '';
             if (regionFilter) regionFilter.value = '';
+            if (salesmanFilter) salesmanFilter.value = '';
             // Reload clients with new status filter
             ClientManager.loadClients(selectedStatus);
         });

@@ -329,6 +329,7 @@ footer {
 .filter-group .filter-container {
     flex: 1;
     min-width: 150px;
+    max-width: 200px;
 }
 
 /* Multiple filter containers styling */
@@ -1552,12 +1553,13 @@ section h2 .status-count {
         display: flex;
         gap: 0.5rem;
         width: 100%;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
     }
     
     .filter-group .filter-container {
         flex: 1;
         min-width: 140px;
+        max-width: 180px;
     }
     
     .section-actions {
@@ -2972,11 +2974,13 @@ html[lang="en"] .section-actions {
     
     /* Desktop filter group styling */
     .filter-group {
-        max-width: 400px;
+        max-width: 600px;
+        flex-wrap: wrap;
     }
     
     .filter-group .filter-container {
-        max-width: 180px;
+        max-width: 200px;
+        min-width: 150px;
     }
     
     .section-actions {
