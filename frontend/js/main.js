@@ -901,6 +901,15 @@ const ClientManager = {
                                     }
                                 </div>
                             </div>
+                            <div class="detail-group">
+                                <div class="detail-label">${currentLanguage === 'ar' ? 'العنوان:' : 'Address:'}</div>
+                                <div class="detail-value">
+                                    ${client.address ? 
+                                        `<span class="address-display">${client.address}</span>` 
+                                        : (currentLanguage === 'ar' ? 'غير محدد' : 'Not specified')
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -1533,8 +1542,11 @@ const ClientManager = {
     
     copyPhone: function(phone) {
         if (phone && phone.trim()) {
+            const normalized = phone.replace(/[^\d+]/g, '');
+            const telUrl = `tel:${normalized}`;
             navigator.clipboard.writeText(phone).then(() => {
-                alert(currentLanguage === 'ar' ? 'تم نسخ رقم الهاتف' : 'Phone number copied');
+                // Open dialer after copying
+                setTimeout(() => { window.location.href = telUrl; }, 50);
             }).catch(() => {
                 // Fallback for older browsers
                 const textArea = document.createElement('textarea');
@@ -1543,7 +1555,7 @@ const ClientManager = {
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                alert(currentLanguage === 'ar' ? 'تم نسخ رقم الهاتف' : 'Phone number copied');
+                setTimeout(() => { window.location.href = telUrl; }, 50);
             });
         } else {
             alert(currentLanguage === 'ar' ? 'لا يوجد رقم هاتف' : 'No phone number available');
@@ -1552,13 +1564,8 @@ const ClientManager = {
     
     openLocation: function(location) {
         if (location && location.trim()) {
-            // Check if it's coordinates or address
-            const isCoordinates = location.match(/^-?\d+\.?\d*,-?\d+\.?\d*$/);
-            if (isCoordinates) {
-                window.open(`https://www.google.com/maps?q=${location}`, '_blank');
-            } else {
-                window.open(`https://www.google.com/maps/search/${encodeURIComponent(location)}`, '_blank');
-            }
+            // Open the URL directly
+            window.open(location, '_blank');
         } else {
             alert(currentLanguage === 'ar' ? 'لا يوجد موقع محدد' : 'No location specified');
         }
@@ -3181,92 +3188,18 @@ const ReportManager = {
     },
     
     printReport: function(reportId) {
-        const report = this.currentReports.find(r => r.id === reportId);
-        if (!report) return;
+        // Open HTML report in new window with token in URL
+        const token = localStorage.getItem('authToken');
+        const reportUrl = `${window.location.protocol}//${window.location.host}/api/visit-reports/${reportId}/html?token=${token}`;
         
-        // Create a printable version of the report
-        const printWindow = window.open('', '_blank');
-        const printContent = `
-            <!DOCTYPE html>
-            <html dir="${currentLanguage === 'ar' ? 'rtl' : 'ltr'}">
-            <head>
-                <meta charset="UTF-8">
-                <title>${currentLanguage === 'ar' ? 'تقرير زيارة' : 'Visit Report'} - ${report.client_name}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .header { text-align: center; margin-bottom: 30px; }
-                    .client-info { margin-bottom: 20px; }
-                    .section { margin-bottom: 25px; }
-                    .section h3 { border-bottom: 2px solid #97D2C0; padding-bottom: 5px; color: #333; }
-                    .product-item { margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; }
-                    .product-header { font-weight: bold; margin-bottom: 5px; }
-                    .product-details { margin-left: 15px; }
-                    .note-item { margin-bottom: 10px; padding: 10px; background: #f9f9f9; }
-                    .images-note { color: #666; font-style: italic; }
-                    @media print {
-                        body { margin: 10px; }
-                        .no-print { display: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>${currentLanguage === 'ar' ? 'تقرير زيارة' : 'Visit Report'}</h1>
-                    <h2>${report.client_name}</h2>
-                    <p>${currentLanguage === 'ar' ? 'تاريخ الزيارة:' : 'Visit Date:'} ${new Date(report.visit_date).toLocaleDateString(currentLanguage === 'ar' ? 'ar-SA' : 'en-US')}</p>
-                    <p>${currentLanguage === 'ar' ? 'بواسطة:' : 'By:'} ${report.username}</p>
-                </div>
-
-                ${report.products && report.products.length > 0 ? `
-                    <div class="section">
-                        <h3>${currentLanguage === 'ar' ? 'منتجات الزيارة' : 'Visit Products'}</h3>
-                        ${report.products.map(product => `
-                            <div class="product-item">
-                                <div class="product-header">${product.product_name || (currentLanguage === 'ar' ? 'منتج غير معروف' : 'Unknown Product')}</div>
-                                <div class="product-details">
-                                    ${product.displayed_price ? `
-                                        <p><strong>${currentLanguage === 'ar' ? 'السعر المعروض:' : 'Displayed Price:'}</strong> ${product.displayed_price} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</p>
-                                    ` : ''}
-                                    ${product.nearly_expired ? `
-                                        <p><strong>${currentLanguage === 'ar' ? 'قارب على الانتهاء' : 'Nearly Expired'}</strong></p>
-                                        ${product.expiry_date ? `
-                                            <p><strong>${currentLanguage === 'ar' ? 'تاريخ الانتهاء:' : 'Expiry Date:'}</strong> ${new Date(product.expiry_date).toLocaleDateString(currentLanguage === 'ar' ? 'ar-SA' : 'en-US')}</p>
-                                        ` : ''}
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-
-                ${report.notes && report.notes.length > 0 ? `
-                    <div class="section">
-                        <h3>${currentLanguage === 'ar' ? 'ملاحظات الزيارة' : 'Visit Notes'}</h3>
-                        ${report.notes.map((note, index) => `
-                            <div class="note-item">
-                                <strong>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'} ${index + 1}:</strong>
-                                <p>${note.note_text}</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-
-                ${report.images && report.images.length > 0 ? `
-                    <div class="section">
-                        <p class="images-note">${currentLanguage === 'ar' ? 'يحتوي هذا التقرير على' : 'This report contains'} ${report.images.length} ${currentLanguage === 'ar' ? 'صورة(صور) من الزيارة' : 'visit image(s)'}</p>
-                    </div>
-                ` : ''}
-
-                <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #97D2C0; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    ${currentLanguage === 'ar' ? 'طباعة' : 'Print'}
-                </button>
-            </body>
-            </html>
-        `;
+        // Open in new window
+        const reportWindow = window.open(reportUrl, '_blank');
         
-        printWindow.document.write(printContent);
-        printWindow.document.close();
-        printWindow.focus();
+        if (!reportWindow) {
+            alert(currentLanguage === 'ar' ? 
+                'يرجى السماح بالنوافذ المنبثقة لعرض التقرير' : 
+                'Please allow pop-ups to view the report');
+        }
     },
     
     deleteReport: async function(reportId) {

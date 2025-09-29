@@ -1,3 +1,76 @@
+import os
+import sys
+import pandas as pd
+from app import app
+from database.models import db, User, Client, VisitReport
+
+"""
+Re-import clients for Abdullah from the Excel file in the root directory.
+- Deletes Abdullah's clients and visit reports
+- Imports from all sheets
+- Columns mapping:
+  L (index 11): client name
+  J (index 9): region
+  K (index 10): salesman name
+  I (index 8): address
+"""
+
+EXCEL_PATH = os.path.join(os.getcwd(), 'clients.xlsx')
+
+def main():
+    if not os.path.exists(EXCEL_PATH):
+        print('clients.xlsx not found in project root')
+        sys.exit(1)
+
+    with app.app_context():
+        abdullah = User.query.filter_by(username='abdullah').first()
+        if not abdullah:
+            print('User "abdullah" not found')
+            sys.exit(1)
+
+        # Delete Abdullah's visit reports and clients
+        reports = VisitReport.query.filter_by(user_id=abdullah.id).all()
+        for r in reports:
+            db.session.delete(r)
+
+        clients = Client.query.filter_by(assigned_user_id=abdullah.id).all()
+        for c in clients:
+            db.session.delete(c)
+
+        db.session.commit()
+
+        # Read all sheets
+        xls = pd.ExcelFile(EXCEL_PATH)
+        total_added = 0
+        for sheet_name in xls.sheet_names:
+            df = pd.read_excel(xls, sheet_name=sheet_name, header=0)
+
+            # Safely access columns by index to avoid header name issues
+            for _, row in df.iterrows():
+                name = str(row.iloc[11]).strip() if len(row) > 11 and pd.notna(row.iloc[11]) else None
+                region = str(row.iloc[9]).strip() if len(row) > 9 and pd.notna(row.iloc[9]) else None
+                salesman_name = str(row.iloc[10]).strip() if len(row) > 10 and pd.notna(row.iloc[10]) else None
+                address = str(row.iloc[8]).strip() if len(row) > 8 and pd.notna(row.iloc[8]) else None
+
+                if not name:
+                    continue
+
+                client = Client(
+                    name=name,
+                    region=region,
+                    salesman_name=salesman_name,
+                    address=address,
+                    assigned_user_id=abdullah.id
+                )
+                db.session.add(client)
+                total_added += 1
+
+        db.session.commit()
+        print(f'Imported {total_added} clients for abdullah from {len(xls.sheet_names)} sheets')
+
+if __name__ == '__main__':
+    main()
+
 #!/usr/bin/env python3
 # Simple client import script - avoid console encoding issues
 

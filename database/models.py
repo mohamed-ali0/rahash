@@ -54,6 +54,7 @@ class Client(db.Model):
     name = db.Column(db.String(255), nullable=False)
     region = db.Column(db.String(255))
     location = db.Column(db.Text)  # Google Maps coordinates/address
+    address = db.Column(db.Text)  # Physical address string
     salesman_name = db.Column(db.String(255))  # Name of the salesman handling this client
     thumbnail = db.Column(db.LargeBinary)  # BLOB for image data
     is_active = db.Column(db.Boolean, default=True)  # For deactivation instead of deletion

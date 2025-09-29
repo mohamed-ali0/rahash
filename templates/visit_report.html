@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقرير زيارة عميل</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Traditional Arabic', 'Simplified Arabic', 'Arial', sans-serif;
+            background: #e0e0e0;
+            direction: rtl;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        /* A4 Page */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        /* Title - matching Word's style */
+        .document-title {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #000;
+        }
+        
+        /* Info lines - matching Word's formatting */
+        .info-container {
+            margin-bottom: 15px;
+        }
+        
+        .info-line {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .info-line span.label {
+            color: #000;
+        }
+        
+        .info-line span.value {
+            font-weight: normal;
+            color: #000;
+            margin-right: 10px;
+        }
+        
+        /* Images table - matching Word's table style */
+        .images-section {
+            margin: 20px 0;
+        }
+        
+        .images-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .images-table td {
+            width: 33.33%;
+            height: 120px;
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: middle;
+            padding: 5px;
+            position: relative;
+        }
+        
+        .image-cell {
+            font-size: 12pt;
+            color: #333;
+        }
+        
+        .actual-image {
+            max-width: 95%;
+            max-height: 110px;
+            object-fit: contain;
+        }
+        
+        /* Notes section - matching Word's table */
+        .notes-section {
+            margin: 20px 0;
+        }
+        
+        .notes-box {
+            width: 100%;
+            border: 1px solid #000;
+            min-height: 100px;
+            padding: 10px;
+        }
+        
+        .notes-header {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .notes-text {
+            font-size: 12pt;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        
+        /* Products table - matching Word's exact table */
+        .products-section {
+            margin: 20px 0;
+        }
+        
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11pt;
+        }
+        
+        .products-table th,
+        .products-table td {
+            border: 1px solid #000;
+            padding: 5px 3px;
+            text-align: center;
+            height: 25px;
+        }
+        
+        .products-table th {
+            background-color: #d9d9d9;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        
+        .products-table td {
+            font-size: 11pt;
+        }
+        
+        /* Column widths matching Word */
+        .col-num { width: 5%; }
+        .col-product { width: 35%; }
+        .col-our-price { width: 15%; }
+        .col-store-price { width: 15%; }
+        .col-expiry { width: 15%; }
+        .col-date { width: 15%; }
+        
+        /* Control buttons */
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .btn {
+            padding: 10px 25px;
+            margin: 0 10px;
+            font-size: 14pt;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #4472C4;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-print {
+            background: #70AD47;
+        }
+        
+        .btn-pdf {
+            background: #ED7D31;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .page {
+                width: 100%;
+                min-height: initial;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+            }
+            
+            .controls {
+                display: none !important;
+            }
+            
+            .products-table th {
+                background-color: #d9d9d9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Document Title -->
+        <div class="document-title">تقرير زيارة عميل</div>
+        
+        <!-- Client and Date Information -->
+        <div class="info-container">
+            <div class="info-line">
+                <span class="label">العميل:</span>
+                <span class="value" id="client-name">اسم_عميل</span>
+            </div>
+            <div class="info-line">
+                <span class="label">التاريخ:</span>
+                <span class="value" id="visit-date">تاريخ_زيارة</span>
+            </div>
+        </div>
+        
+        <!-- Images Table (3 cells) -->
+        <div class="images-section">
+            <table class="images-table">
+                <tr>
+                    <td>
+                        <div class="image-cell" id="image-3">صورة_3</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="image-2">صورة_2</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="image-1">صورة_1</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Notes Section -->
+        <div class="notes-section">
+            <div class="notes-box">
+                <div class="notes-header">ملاحظات</div>
+                <div class="notes-text" id="notes-content">ملحوظات</div>
+            </div>
+        </div>
+        
+        <!-- Products Table -->
+        <div class="products-section">
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th class="col-num">م</th>
+                        <th class="col-product">اسم المنتج</th>
+                        <th class="col-our-price">سعر البيع</th>
+                        <th class="col-store-price">السعر بالمحل</th>
+                        <th class="col-expiry">قرب الانتهاء</th>
+                        <th class="col-date">تاريخ الانتهاء</th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody">
+                    <tr>
+                        <td>1</td>
+                        <td>اسم_منتج</td>
+                        <td>سعر بيع</td>
+                        <td>سعر محل</td>
+                        <td>قرب</td>
+                        <td>تاريخه</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn btn-print" onclick="window.print()">🖨️ طباعة</button>
+            <button class="btn btn-pdf" onclick="convertToPDF()">📄 تحويل إلى PDF</button>
+        </div>
+    </div>
+    
+    <script>
+        // Function to populate the report with data
+        function populateReport(data) {
+            // Set client name
+            if (data.client_name) {
+                document.getElementById('client-name').textContent = data.client_name;
+            }
+            
+            // Set visit date
+            if (data.visit_date) {
+                document.getElementById('visit-date').textContent = data.visit_date;
+            }
+            
+            // Set images
+            if (data.images && Array.isArray(data.images)) {
+                for (let i = 0; i < Math.min(3, data.images.length); i++) {
+                    const imageCell = document.getElementById(`image-${i + 1}`);
+                    if (imageCell && data.images[i]) {
+                        imageCell.innerHTML = `<img src="data:image/jpeg;base64,${data.images[i]}" class="actual-image" alt="صورة ${i + 1}">`;
+                    }
+                }
+            }
+            
+            // Set notes
+            if (data.notes) {
+                document.getElementById('notes-content').textContent = data.notes;
+            }
+            
+            // Set products
+            if (data.products && Array.isArray(data.products)) {
+                const tbody = document.getElementById('products-tbody');
+                tbody.innerHTML = '';
+                
+                data.products.forEach((product, index) => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${product.name || ''}</td>
+                        <td>${product.our_price || ''}</td>
+                        <td>${product.displayed_price || ''}</td>
+                        <td>${product.nearly_expired ? 'نعم' : 'لا'}</td>
+                        <td>${product.expiry_date || ''}</td>
+                    `;
+                });
+                
+                // Add empty rows if less than 4 products
+                while (tbody.rows.length < 4) {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${tbody.rows.length}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    `;
+                }
+            }
+        }
+        
+        // Function to convert to PDF
+        function convertToPDF() {
+            // Hide buttons before converting
+            document.querySelector('.controls').style.display = 'none';
+            
+            // For now, use browser's print to PDF
+            window.print();
+            
+            // Show buttons again
+            setTimeout(() => {
+                document.querySelector('.controls').style.display = 'block';
+            }, 1000);
+        }
+        
+        // Data will be injected by the server, no need to fetch
+    </script>
+</body>
+</html>

@@ -10,6 +10,12 @@ import jwt
 import base64
 from datetime import datetime, timedelta
 import os
+import json
+import tempfile
+from docx import Document
+from docx.shared import Inches
+import io
+from docx2pdf import convert
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='frontend')
@@ -225,6 +231,7 @@ def get_clients(current_user):
                 'name': client.name,
                 'region': client.region,
                 'location': client.location,
+                'address': getattr(client, 'address', None),
                 'salesman_name': client.salesman_name,
                 'phone': client.owner.phone if client.owner else None,
                 'thumbnail': base64.b64encode(client.thumbnail).decode('utf-8') if client.thumbnail else None,
@@ -258,6 +265,7 @@ def create_client(current_user):
             name=data['name'],
             region=data.get('region'),
             location=data.get('location'),
+            address=data.get('address'),
             salesman_name=data.get('salesman_name'),
             assigned_user_id=current_user.id
         )
@@ -381,6 +389,8 @@ def update_client(current_user, client_id):
             client.region = data['region']
         if 'location' in data:
             client.location = data['location']
+        if 'address' in data:
+            client.address = data['address']
         if 'salesman_name' in data:
             client.salesman_name = data['salesman_name']
         
@@ -1057,6 +1067,402 @@ def export_summary_report():
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Not found"}), 404
+
+def replace_text_in_docx(doc, find_text, replace_text):
+    """Simple find and replace function for Word documents"""
+    replaced = False
+    
+    # Replace in paragraphs
+    for paragraph in doc.paragraphs:
+        if find_text in paragraph.text:
+            # Try replacing in runs first
+            for run in paragraph.runs:
+                if find_text in run.text:
+                    run.text = run.text.replace(find_text, replace_text)
+                    replaced = True
+            
+            # If not found in runs, the text might be split across runs
+            # Reconstruct the paragraph if needed
+            if not replaced and find_text in paragraph.text:
+                # Get the full text and replace
+                full_text = paragraph.text
+                new_text = full_text.replace(find_text, replace_text)
+                # Clear runs and add new one with replaced text
+                paragraph.clear()
+                paragraph.add_run(new_text)
+                replaced = True
+    
+    # Replace in tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    if find_text in paragraph.text:
+                        # Try replacing in runs first
+                        cell_replaced = False
+                        for run in paragraph.runs:
+                            if find_text in run.text:
+                                run.text = run.text.replace(find_text, replace_text)
+                                cell_replaced = True
+                                replaced = True
+                        
+                        # If not found in runs, text might be split
+                        if not cell_replaced and find_text in paragraph.text:
+                            full_text = paragraph.text
+                            new_text = full_text.replace(find_text, replace_text)
+                            paragraph.clear()
+                            paragraph.add_run(new_text)
+                            replaced = True
+    
+    if replaced:
+        print(f"Replaced '{find_text}' with '{replace_text}'")
+    else:
+        print(f"WARNING: Could not find '{find_text}' in document")
+    
+    return replaced
+
+@app.route('/api/visit-reports/<int:report_id>/html', methods=['GET'])
+def get_visit_report_html(report_id):
+    """Serve the HTML report template with data (no auth required for HTML)"""
+    try:
+        # Get token from query parameter since this is opened in a new window
+        token = request.args.get('token')
+        print(f"Received token: {token[:20]}..." if token else "No token received")
+        
+        if not token:
+            return "Unauthorized - Token missing", 401
+        
+        # Verify token
+        try:
+            data = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+            current_user = User.query.get(data['user_id'])
+            if not current_user:
+                return "Unauthorized - Invalid token", 401
+        except Exception as e:
+            print(f"Token decode error: {e}")
+            return "Unauthorized - Invalid token", 401
+        
+        # Get the report with permission check
+        report = VisitReport.query.get(report_id)
+        if not report:
+            return "Report not found", 404
+        
+        # Check permission - only super admin or report creator can view
+        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+            return "Permission denied", 403
+        
+        # Read the HTML template and inject data directly
+        with open('templates/visit_report.html', 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Prepare report data
+        report_data = {
+            'client_name': report.client.name if report.client else 'غير محدد',
+            'visit_date': report.visit_date.strftime('%Y/%m/%d'),
+            'notes': '\\n'.join([note.note_text for note in report.notes]) if report.notes else '',
+            'images': [],
+            'products': []
+        }
+        
+        # Add images (first 3)
+        for img in report.images[:3]:
+            if img.image_data:
+                report_data['images'].append(base64.b64encode(img.image_data).decode('utf-8'))
+        
+        # Add products
+        for rp in report.products:
+            product_data = {
+                'name': rp.product.name if rp.product else 'منتج غير محدد',
+                'our_price': f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد',
+                'displayed_price': f"{rp.displayed_price:.2f} ريال",
+                'nearly_expired': rp.nearly_expired,
+                'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else ''
+            }
+            report_data['products'].append(product_data)
+        
+        # Inject data script into HTML
+        data_script = f"""
+        <script>
+            // Auto-populate data when page loads
+            window.addEventListener('DOMContentLoaded', function() {{
+                const reportData = {json.dumps(report_data, ensure_ascii=False)};
+                if (typeof populateReport === 'function') {{
+                    populateReport(reportData);
+                }}
+            }});
+        </script>
+        """
+        
+        # Insert the script before closing body tag
+        html_content = html_content.replace('</body>', data_script + '</body>')
+        
+        return html_content
+        
+    except Exception as e:
+        print(f"Error serving HTML report: {e}")
+        return f"Error loading report: {str(e)}", 500
+
+@app.route('/api/visit-reports/<int:report_id>/data', methods=['GET'])
+@token_required
+def get_visit_report_data(current_user, report_id):
+    """Get report data as JSON for the HTML template"""
+    try:
+        # Get the report with permission check
+        report = VisitReport.query.get(report_id)
+        if not report:
+            return jsonify({'message': 'Visit report not found'}), 404
+        
+        # Check permission
+        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Prepare data for the HTML template
+        report_data = {
+            'client_name': report.client.name if report.client else 'غير محدد',
+            'visit_date': report.visit_date.strftime('%Y/%m/%d'),
+            'notes': '\n'.join([note.note_text for note in report.notes]) if report.notes else '',
+            'images': [],
+            'products': []
+        }
+        
+        # Add images (first 3)
+        for img in report.images[:3]:
+            if img.image_data:
+                report_data['images'].append(base64.b64encode(img.image_data).decode('utf-8'))
+        
+        # Add products
+        for rp in report.products:
+            product_data = {
+                'name': rp.product.name if rp.product else 'منتج غير محدد',
+                'our_price': f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد',
+                'displayed_price': f"{rp.displayed_price:.2f} ريال",
+                'nearly_expired': rp.nearly_expired,
+                'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else ''
+            }
+            report_data['products'].append(product_data)
+        
+        return jsonify({'success': True, 'report': report_data})
+        
+    except Exception as e:
+        print(f"Error getting report data: {e}")
+        return jsonify({'message': 'Failed to get report data', 'error': str(e)}), 500
+
+@app.route('/api/visit-reports/<int:report_id>/print', methods=['GET'])
+@token_required
+def print_visit_report(current_user, report_id):
+    """Generate and download PDF report from Word template using JSON mapping"""
+    try:
+        # Get the report with permission check
+        report = VisitReport.query.get(report_id)
+        if not report:
+            return jsonify({'message': 'Visit report not found'}), 404
+        
+        # Check permission - only super admin or report creator can print
+        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Load the JSON mapping
+        with open('templates/report_mapping.json', 'r', encoding='utf-8') as f:
+            mapping = json.load(f)
+        
+        # Load the Word document template
+        doc = Document('templates/visit_report.docx')
+        
+        # Debug: Print what we're looking for
+        print("\n=== DEBUG: Starting replacements ===")
+        print(f"Looking for placeholders from JSON:")
+        print(f"  Client name: '{mapping['placeholders']['client_name']}'")
+        print(f"  Visit date: '{mapping['placeholders']['visit_date']}'")
+        print(f"  Notes: '{mapping['placeholders']['notes']}'")
+        
+        # Debug: Print what's in the document
+        print("\nDocument paragraphs:")
+        for i, para in enumerate(doc.paragraphs):
+            if para.text.strip():
+                print(f"  Para {i}: {para.text[:50]}...")
+        
+        print("\nDocument tables:")
+        for t_idx, table in enumerate(doc.tables):
+            print(f"  Table {t_idx}: {len(table.rows)} rows x {len(table.columns)} columns")
+        
+        # Prepare data
+        client_name = report.client.name if report.client else 'غير محدد'
+        visit_date = report.visit_date.strftime('%Y-%m-%d')
+        
+        print(f"\nReplacing with:")
+        print(f"  Client name: '{client_name}'")
+        print(f"  Visit date: '{visit_date}'")
+        
+        # SIMPLE FIND AND REPLACE using JSON mapping
+        
+        # 1. Replace client name
+        replace_text_in_docx(doc, mapping['placeholders']['client_name'], client_name)
+        
+        # 2. Replace visit date
+        replace_text_in_docx(doc, mapping['placeholders']['visit_date'], visit_date)
+        
+        # 3. Replace image placeholders
+        images = report.images[:3] if report.images else []
+        for i in range(3):
+            placeholder = mapping['placeholders'][f'image_{i+1}']
+            if i < len(images):
+                # For now just mark that image exists - TODO: insert actual image
+                replace_text_in_docx(doc, placeholder, f"[صورة متوفرة {i+1}]")
+            else:
+                replace_text_in_docx(doc, placeholder, f"لا توجد صورة")
+        
+        # 4. Replace notes placeholder
+        if report.notes:
+            notes_text = '\n'.join([f"• {note.note_text}" for note in report.notes])
+        else:
+            notes_text = 'لا توجد ملاحظات'
+        replace_text_in_docx(doc, mapping['placeholders']['notes'], notes_text)
+        
+        # 5. Handle products table - only if we have products
+        if report.products and len(doc.tables) >= 3:
+            products_table = doc.tables[2]  # Table 2 is products
+            
+            # Check if we have existing data rows (rows 1-4 are for products, row 0 is header)
+            num_existing_data_rows = len(products_table.rows) - 1  # Subtract header row
+            num_products = len(report.products)
+            
+            # Fill existing rows with product data (up to 4 products)
+            for idx, rp in enumerate(report.products[:4]):  # Only first 4 products for existing rows
+                if idx + 1 < len(products_table.rows):  # Row exists (idx+1 because row 0 is header)
+                    row = products_table.rows[idx + 1]
+                    
+                    # Prepare product data
+                    product_name = rp.product.name if rp.product else 'منتج غير محدد'
+                    our_price = f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد'
+                    displayed_price = f"{rp.displayed_price:.2f} ريال"
+                    nearly_expired = "نعم" if rp.nearly_expired else "لا"
+                    expiry_date = rp.expiry_date.strftime('%Y-%m-%d') if rp.expiry_date else 'غير محدد'
+                    
+                    # Find and replace product placeholders in this row
+                    # We'll replace placeholders if they exist, otherwise just set the cell text
+                    for cell_idx, cell in enumerate(row.cells):
+                        if cell_idx == 0:  # Product name column
+                            if mapping['product_fields']['product_name'] in cell.text:
+                                for para in cell.paragraphs:
+                                    for run in para.runs:
+                                        if mapping['product_fields']['product_name'] in run.text:
+                                            run.text = run.text.replace(mapping['product_fields']['product_name'], product_name)
+                            elif not cell.text.strip():  # Empty cell
+                                cell.text = product_name
+                        elif cell_idx == 1:  # Our price column
+                            if mapping['product_fields']['our_price'] in cell.text:
+                                for para in cell.paragraphs:
+                                    for run in para.runs:
+                                        if mapping['product_fields']['our_price'] in run.text:
+                                            run.text = run.text.replace(mapping['product_fields']['our_price'], our_price)
+                            elif not cell.text.strip():
+                                cell.text = our_price
+                        elif cell_idx == 2:  # Displayed price column
+                            if mapping['product_fields']['displayed_price'] in cell.text:
+                                for para in cell.paragraphs:
+                                    for run in para.runs:
+                                        if mapping['product_fields']['displayed_price'] in run.text:
+                                            run.text = run.text.replace(mapping['product_fields']['displayed_price'], displayed_price)
+                            elif not cell.text.strip():
+                                cell.text = displayed_price
+                        elif cell_idx == 3:  # Nearly expired column
+                            if mapping['product_fields']['nearly_expired'] in cell.text:
+                                for para in cell.paragraphs:
+                                    for run in para.runs:
+                                        if mapping['product_fields']['nearly_expired'] in run.text:
+                                            run.text = run.text.replace(mapping['product_fields']['nearly_expired'], nearly_expired)
+                            elif not cell.text.strip():
+                                cell.text = nearly_expired
+                        elif cell_idx == 4:  # Expiry date column
+                            if mapping['product_fields']['expiry_date'] in cell.text:
+                                for para in cell.paragraphs:
+                                    for run in para.runs:
+                                        if mapping['product_fields']['expiry_date'] in run.text:
+                                            run.text = run.text.replace(mapping['product_fields']['expiry_date'], expiry_date)
+                            elif not cell.text.strip():
+                                cell.text = expiry_date
+            
+            # If we have more than 4 products, add new rows
+            if num_products > 4:
+                for rp in report.products[4:]:  # Products beyond the first 4
+                    new_row = products_table.add_row()
+                    
+                    # Fill the new row cells
+                    product_name = rp.product.name if rp.product else 'منتج غير محدد'
+                    our_price = f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد'
+                    displayed_price = f"{rp.displayed_price:.2f} ريال"
+                    nearly_expired = "نعم" if rp.nearly_expired else "لا"
+                    expiry_date = rp.expiry_date.strftime('%Y-%m-%d') if rp.expiry_date else 'غير محدد'
+                    
+                    if len(new_row.cells) > 0:
+                        new_row.cells[0].text = product_name
+                    if len(new_row.cells) > 1:
+                        new_row.cells[1].text = our_price
+                    if len(new_row.cells) > 2:
+                        new_row.cells[2].text = displayed_price
+                    if len(new_row.cells) > 3:
+                        new_row.cells[3].text = nearly_expired
+                    if len(new_row.cells) > 4:
+                        new_row.cells[4].text = expiry_date
+        
+        # Save modified Word document to temporary file
+        temp_docx = tempfile.NamedTemporaryFile(delete=False, suffix='.docx')
+        doc.save(temp_docx.name)
+        temp_docx.close()
+        
+        # Convert to PDF
+        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        temp_pdf.close()
+        
+        try:
+            convert(temp_docx.name, temp_pdf.name)
+        except Exception as e:
+            print(f"Error converting to PDF: {e}")
+            # If conversion fails, return the Word document instead
+            filename = f"visit_report_{report.id}_{visit_date}.docx"
+            
+            def cleanup_files():
+                try:
+                    os.unlink(temp_docx.name)
+                except:
+                    pass
+            
+            response = send_file(
+                temp_docx.name,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                as_attachment=True,
+                download_name=filename
+            )
+            response.call_on_close(cleanup_files)
+            return response
+        
+        # Return PDF file
+        filename = f"visit_report_{report.id}_{visit_date}.pdf"
+        
+        def cleanup_files():
+            try:
+                os.unlink(temp_docx.name)
+                os.unlink(temp_pdf.name)
+            except:
+                pass
+        
+        response = send_file(
+            temp_pdf.name,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+        # Schedule file cleanup after response
+        response.call_on_close(cleanup_files)
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error generating PDF report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Failed to generate PDF report', 'error': str(e)}), 500
 
 @app.errorhandler(500)
 def internal_error(error):

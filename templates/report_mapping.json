@@ -1,0 +1,18 @@
+{
+  "placeholders": {
+    "client_name": "اسم_العميل",
+    "visit_date": "تاريخ_الزيارة",
+    "image_1": "صورة_1",
+    "image_2": "صورة_2", 
+    "image_3": "صورة_3",
+    "notes": "ملاحظات",
+    "products_table": "جدول_المنتجات"
+  },
+  "product_fields": {
+    "product_name": "اسم_المنتج",
+    "our_price": "سعرنا",
+    "displayed_price": "سعر_المحل", 
+    "nearly_expired": "قارب_انتهاء",
+    "expiry_date": "تاريخ_انتهاء"
+  }
+}
