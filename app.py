@@ -180,6 +180,11 @@ def logo_corner_file():
     """Serve corner logo file"""
     return send_file('templates/logo_corner.png', mimetype='image/png')
 
+@app.route('/website_logo.png')
+def website_logo_file():
+    """Serve website logo file for favicon"""
+    return send_file('website_logo.png', mimetype='image/png')
+
 # Client Management Routes
 @app.route('/api/clients', methods=['GET'])
 @token_required

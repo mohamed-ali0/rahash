@@ -60,15 +60,14 @@ Thumbs.db
 
 # Flask
 instance/
-!instance/business_management.db
 .flaskenv
 
 # Migration cache (keep migration files but not cache)
 migrations/versions/__pycache__/
 
-# Keep the database but ignore other instance files
-instance/*
-!instance/business_management.db
+# Database files (server database is up to date, don't modify)
+instance/business_management.db
+instance/business_management_backup_*.db
 
 # Keep templates folder
 !templates/
