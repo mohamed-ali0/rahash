@@ -883,6 +883,23 @@ const ClientManager = {
                 `;
             }).join('');
         }
+        
+        // Update client count display
+        this.updateClientCount(clients.length);
+    },
+    
+    updateClientCount: function(count) {
+        const clientCountElement = document.getElementById('clientCount');
+        if (clientCountElement) {
+            const span = clientCountElement.querySelector('span');
+            if (span) {
+                if (currentLanguage === 'ar') {
+                    span.textContent = `${count} ${count === 1 ? 'عميل' : 'عميل'}`;
+                } else {
+                    span.textContent = `${count} ${count === 1 ? 'client' : 'clients'}`;
+                }
+            }
+        }
     },
     
     filterClients: function(searchTerm = '', selectedRegion = '', selectedSalesman = '') {
@@ -913,6 +930,9 @@ const ClientManager = {
         const statusFilter = document.getElementById('clientStatusFilter');
         const currentStatus = statusFilter ? statusFilter.value : 'active';
         this.updateStatusIndicator('clients', currentStatus, filteredClients.length);
+        
+        // Update client count display
+        this.updateClientCount(filteredClients.length);
     },
     
     updateStatusIndicator: function(type, statusFilter, count) {
