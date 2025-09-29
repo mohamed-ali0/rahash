@@ -2,7 +2,8 @@
 
 // Global variables
 let currentLanguage = 'ar';
-const API_BASE_URL = 'http://localhost:5009/api';
+// Dynamic API URL - works for both localhost and deployed server
+const API_BASE_URL = `${window.location.protocol}//${window.location.host}/api`;
 
 // DOM Content Loaded Event
 document.addEventListener('DOMContentLoaded', function() {

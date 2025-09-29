@@ -428,7 +428,6 @@ section h2 .status-count {
 
 /* Card Styles */
 .client-card,
-.product-card,
 .report-card {
     background: var(--background-white);
     border-radius: var(--border-radius);
@@ -440,11 +439,28 @@ section h2 .status-count {
     overflow: hidden;
 }
 
+.product-card {
+    background: var(--background-white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    border: 3px solid #D4A574;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(212, 165, 116, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .client-card:hover,
-.product-card:hover,
 .report-card:hover {
     transform: translateY(-5px);
     box-shadow: var(--shadow-hover);
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(212, 165, 116, 0.4), 0 4px 15px rgba(0, 0, 0, 0.2);
+    border-color: #B8860B;
 }
 
 /* Client Card */
