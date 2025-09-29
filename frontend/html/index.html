@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة الأعمال | Business Management System</title>
+    <link rel="stylesheet" href="/css/globals.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <img src="/logo.png" alt="Logo" class="dashboard-logo">
+                <div class="welcome-text">
+                    <h2 data-ar="مرحبا بك في عالم رهش" data-en="Welcome to Rahash World">مرحبا بك في عالم رهش</h2>
+                </div>
+            </div>
+            <button class="sidebar-close" onclick="toggleSidebar()">×</button>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="user-info">
+                <span class="user-greeting" id="userGreeting"></span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#dashboard" onclick="navigateAndCloseSidebar('dashboard')" data-ar="لوحة التحكم" data-en="Dashboard">📊 <span data-ar="لوحة التحكم" data-en="Dashboard">لوحة التحكم</span></a></li>
+                    <li><a href="#clients" onclick="navigateAndCloseSidebar('clients')" data-ar="إدارة العملاء" data-en="Manage Clients">👥 <span data-ar="إدارة العملاء" data-en="Manage Clients">إدارة العملاء</span></a></li>
+                    <li><a href="#products" onclick="navigateAndCloseSidebar('products')" data-ar="إدارة المنتجات" data-en="Manage Products">📦 <span data-ar="إدارة المنتجات" data-en="Manage Products">إدارة المنتجات</span></a></li>
+                    <li><a href="#reports" onclick="navigateAndCloseSidebar('reports')" data-ar="تقارير الزيارات" data-en="Visit Reports">📈 <span data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</span></a></li>
+                </ul>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="btn btn-logout" onclick="logout()" data-ar="تسجيل الخروج" data-en="Logout">🚪 <span data-ar="تسجيل الخروج" data-en="Logout">تسجيل الخروج</span></button>
+                <div class="language-toggle">
+                    <button id="langToggle" class="btn-lang">EN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desktop Header -->
+    <header class="desktop-header">
+        <div class="header-content">
+            <div class="header-left">
+                <img src="/top_bar_logo.png" alt="Rahash Logo" class="desktop-header-logo">
+            </div>
+            <div class="header-actions">
+                <button id="langToggleDesktop" class="btn-lang">EN</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+        <div class="header-center">
+            <img src="/top_bar_logo.png" alt="Rahash Logo" class="mobile-header-logo">
+        </div>
+        <div class="header-actions">
+            <button id="langToggleMobile" class="btn-lang">EN</button>
+        </div>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    
+    <!-- Desktop Sidebar Toggle -->
+    <button class="sidebar-toggle-desktop" onclick="toggleSidebar()">☰</button>
+    
+    <main class="main-content" id="mainContent">
+        <section id="dashboard">
+            <h2 data-ar="لوحة التحكم" data-en="Dashboard">لوحة التحكم</h2>
+            <div class="dashboard-cards">
+                <div class="card">
+                    <h3 data-ar="إجمالي العملاء" data-en="Total Clients">إجمالي العملاء</h3>
+                    <p class="card-number" id="totalClients">0</p>
+                </div>
+                <div class="card">
+                    <h3 data-ar="إجمالي المنتجات" data-en="Total Products">إجمالي المنتجات</h3>
+                    <p class="card-number" id="totalProducts">0</p>
+                </div>
+                <div class="card">
+                    <h3 data-ar="تقارير هذا الشهر" data-en="This Month Reports">تقارير هذا الشهر</h3>
+                    <p class="card-number" id="monthlyReports">0</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="clients">
+            <h2 data-ar="إدارة العملاء" data-en="Client Management">إدارة العملاء</h2>
+            <div class="section-actions">
+                <div class="search-container">
+                    <input type="text" id="clientSearch" class="search-input" placeholder="البحث عن العملاء..." data-ar="البحث عن العملاء..." data-en="Search clients...">
+                    <div class="search-icon">🔍</div>
+                </div>
+                <div class="filter-group">
+                    <div class="filter-container">
+                        <select id="regionFilter" class="filter-select" data-ar="تصفية حسب المنطقة" data-en="Filter by region">
+                            <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
+                        </select>
+                    </div>
+                    <div class="filter-container">
+                        <select id="clientStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة" data-en="Filter by status">
+                            <option value="active" data-ar="العملاء النشطون" data-en="Active Clients">العملاء النشطون</option>
+                            <option value="inactive" data-ar="العملاء المعطلون" data-en="Inactive Clients">العملاء المعطلون</option>
+                            <option value="all" data-ar="جميع العملاء" data-en="All Clients">جميع العملاء</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="addClientBtn" data-ar="إضافة عميل جديد" data-en="Add New Client">
+                    <svg width="16" height="16" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    <span data-ar="إضافة عميل" data-en="Add Client">إضافة عميل</span>
+                </button>
+            </div>
+            <div class="clients-grid" id="clientsList">
+                <!-- Client cards will be populated here -->
+            </div>
+        </section>
+        
+        <section id="products">
+            <h2 data-ar="إدارة المنتجات" data-en="Product Management">إدارة المنتجات</h2>
+            <div class="section-actions">
+                <div class="search-container">
+                    <input type="text" id="productSearch" class="search-input" placeholder="البحث عن المنتجات..." data-ar="البحث عن المنتجات..." data-en="Search products...">
+                    <div class="search-icon">🔍</div>
+                </div>
+                <button class="btn btn-primary" id="addProductBtn" data-ar="إضافة منتج جديد" data-en="Add New Product">
+                    <svg width="16" height="16" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    <span data-ar="إضافة منتج" data-en="Add Product">إضافة منتج</span>
+                </button>
+            </div>
+            <div class="products-grid" id="productsList">
+                <!-- Product cards will be populated here -->
+            </div>
+        </section>
+        
+        <section id="reports">
+            <h2 data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</h2>
+            <div class="section-actions">
+                <div class="filter-group">
+                    <div class="filter-container">
+                        <select id="reportStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة" data-en="Filter by status">
+                            <option value="active" data-ar="التقارير النشطة" data-en="Active Reports">التقارير النشطة</option>
+                            <option value="inactive" data-ar="التقارير المعطلة" data-en="Inactive Reports">التقارير المعطلة</option>
+                            <option value="all" data-ar="جميع التقارير" data-en="All Reports">جميع التقارير</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="addReportBtn" data-ar="إضافة تقرير زيارة" data-en="Add Visit Report">
+                    <svg width="16" height="16" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                    <span data-ar="إضافة تقرير" data-en="Add Report">إضافة تقرير</span>
+                </button>
+            </div>
+            <div class="reports-grid" id="reportsList">
+                <!-- Visit report cards will be populated here -->
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Business Management System</p>
+    </footer>
+    
+    <!-- Expanded Product View Modal -->
+    <div id="expandedModal" class="expanded-modal">
+        <!-- Modal content will be populated by JavaScript -->
+    </div>
+
+    <!-- Add Product Modal -->
+    <div id="addProductModal" class="modal-overlay" style="display: none;">
+        <!-- Modal content will be populated by JavaScript -->
+    </div>
+    
+    <script src="/js/main.js"></script>
+</body>
+</html>
