@@ -558,6 +558,58 @@ section h2 .status-count {
     transform: scale(1.1);
 }
 
+/* Location button states */
+.location-btn.location-set {
+    background: var(--secondary-color);
+    color: white;
+}
+
+.location-btn.location-set:hover {
+    background: var(--primary-color);
+}
+
+.location-btn.location-undefined {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+    opacity: 0.7;
+    position: relative;
+}
+
+.location-btn.location-undefined:hover {
+    background: linear-gradient(135deg, #f57c00, #ef6c00);
+    opacity: 1;
+}
+
+.location-btn.location-undefined:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Location undefined indicator */
+.location-btn.location-undefined::after {
+    content: '!';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #f44336;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
 /* Additional Client Card Styles */
 
 .client-card .avatar-placeholder {
@@ -672,6 +724,39 @@ section h2 .status-count {
 .map-btn:hover {
     background: var(--secondary-color);
     transform: scale(1.05);
+}
+
+/* Map button states */
+.map-btn.location-set {
+    background: var(--primary-color);
+    color: white;
+}
+
+.map-btn.location-set:hover {
+    background: var(--secondary-color);
+}
+
+.map-btn.location-undefined {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.map-btn.location-undefined:hover {
+    background: linear-gradient(135deg, #f57c00, #ef6c00);
+    opacity: 1;
+}
+
+.map-btn.location-undefined:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Location undefined text */
+.location-undefined-text {
+    color: #ff9800;
+    font-style: italic;
+    margin-right: 0.5rem;
 }
 
 .person-info {

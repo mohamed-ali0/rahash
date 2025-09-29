@@ -846,8 +846,12 @@ const ClientManager = {
                                 <button class="phone-btn" onclick="ClientManager.copyPhone('${client.phone || ''}')">
                                     📞 ${client.phone || (currentLanguage === 'ar' ? 'لا يوجد هاتف' : 'No phone')}
                                 </button>
-                                <button class="location-btn" onclick="ClientManager.openLocation('${client.location || ''}')">
-                                    📍
+                                <button class="location-btn ${client.location ? 'location-set' : 'location-undefined'}" onclick="ClientManager.openLocation('${client.location || ''}')" title="${client.location ? (currentLanguage === 'ar' ? 'فتح الموقع' : 'Open Location') : (currentLanguage === 'ar' ? 'لا يوجد موقع' : 'No Location')}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                        <circle cx="12" cy="10" r="3"/>
+                                    </svg>
+                                    ${client.location ? '' : '!'}
                                 </button>
                                 <div class="symbol-buttons">
                                     <button class="btn-icon-stylish btn-edit-stylish" onclick="ClientManager.editClient(${client.id})" title="${currentLanguage === 'ar' ? 'تعديل العميل' : 'Edit Client'}">
@@ -975,8 +979,20 @@ const ClientManager = {
                                 <div class="detail-value">
                                     ${client.location ? 
                                         `<span class="location-display">${client.location}</span>
-                                         <button class="map-btn" onclick="ClientManager.openLocation('${client.location}')" title="${currentLanguage === 'ar' ? 'فتح الخريطة' : 'Open Map'}">🗺️</button>` 
-                                        : (currentLanguage === 'ar' ? 'غير محدد' : 'Not specified')
+                                         <button class="map-btn location-set" onclick="ClientManager.openLocation('${client.location}')" title="${currentLanguage === 'ar' ? 'فتح الموقع' : 'Open Location'}">
+                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                                 <circle cx="12" cy="10" r="3"/>
+                                             </svg>
+                                         </button>` 
+                                        : `<span class="location-undefined-text">${currentLanguage === 'ar' ? 'غير محدد' : 'Not specified'}</span>
+                                           <button class="map-btn location-undefined" onclick="ClientManager.openLocation('')" title="${currentLanguage === 'ar' ? 'لا يوجد موقع' : 'No Location'}" disabled>
+                                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                                   <circle cx="12" cy="10" r="3"/>
+                                               </svg>
+                                               !
+                                           </button>`
                                     }
                                 </div>
                             </div>
