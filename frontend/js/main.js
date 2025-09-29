@@ -494,10 +494,6 @@ const ClientManager = {
                                 <label>${currentLanguage === 'ar' ? 'اسم البائع' : 'Salesman Name'}</label>
                                 <input type="text" name="salesman_name">
                             </div>
-                            <div class="form-group">
-                                <label>${currentLanguage === 'ar' ? 'رقم الهاتف' : 'Phone Number'}</label>
-                                <input type="tel" name="phone">
-                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -601,7 +597,6 @@ const ClientManager = {
             name: formData.get('name'),
             region: formData.get('region') || null,
             salesman_name: formData.get('salesman_name') || null,
-            phone: formData.get('phone') || null,
             location: formData.get('location') || null
         };
         
@@ -616,6 +611,10 @@ const ClientManager = {
             ownerData.email = ownerEmail || null;
             clientData.owner = ownerData;
         }
+        
+        // Set phone for backward compatibility and proper display
+        // Use owner phone as the main phone
+        clientData.phone = ownerPhone || null;
         
         // Collect purchasing manager information
         const managerData = {};
@@ -681,6 +680,10 @@ const ClientManager = {
         }
         
         console.log('Creating new client with data:', clientData);
+        console.log('Phone fields from form:', {
+            'owner_phone': formData.get('owner_phone'),
+            'final_phone': clientData.phone
+        });
         
         try {
             const response = await fetch(`${API_BASE_URL}/clients`, {
@@ -1325,10 +1328,6 @@ const ClientManager = {
                                 <label>${currentLanguage === 'ar' ? 'اسم البائع' : 'Salesman Name'}</label>
                                 <input type="text" name="salesman_name" value="${client.salesman_name || ''}">
                             </div>
-                            <div class="form-group">
-                                <label>${currentLanguage === 'ar' ? 'رقم الهاتف' : 'Phone Number'}</label>
-                                <input type="tel" name="phone" value="${client.phone || ''}">
-                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -1432,7 +1431,6 @@ const ClientManager = {
             name: formData.get('name'),
             region: formData.get('region') || null,
             salesman_name: formData.get('salesman_name') || null,
-            phone: formData.get('phone') || null,
             location: formData.get('location') || null
         };
         
@@ -1447,6 +1445,10 @@ const ClientManager = {
             ownerData.email = ownerEmail || null;
             clientData.owner = ownerData;
         }
+        
+        // Set phone for backward compatibility and proper display
+        // Use owner phone as the main phone
+        clientData.phone = ownerPhone || null;
         
         // Collect purchasing manager information
         const managerData = {};
@@ -1473,6 +1475,10 @@ const ClientManager = {
         }
         
         console.log('Saving client data:', clientData);
+        console.log('Phone fields from form:', {
+            'owner_phone': formData.get('owner_phone'),
+            'final_phone': clientData.phone
+        });
         
         // Handle thumbnail upload
         const thumbnailFile = formData.get('thumbnail');
@@ -2840,6 +2846,9 @@ const ReportManager = {
                     searchInput.value = text;
                     hiddenInput.value = value;
                     dropdown.style.display = 'none';
+                    
+                    // Refresh all product dropdowns to exclude the newly selected product
+                    this.refreshAllProductDropdowns();
                 }
             });
             
@@ -2900,9 +2909,13 @@ const ReportManager = {
         defaultOption.textContent = currentLanguage === 'ar' ? 'اختر المنتج' : 'Select Product';
         dropdown.appendChild(defaultOption);
         
-        // Filter and display matching products
+        // Get already selected product IDs
+        const selectedProductIds = this.getSelectedProductIds();
+        
+        // Filter and display matching products (excluding already selected ones)
         const filteredProducts = this.productsData.filter(product =>
-            product.name.toLowerCase().includes(searchTerm)
+            product.name.toLowerCase().includes(searchTerm) && 
+            !selectedProductIds.includes(product.id)
         );
         
         filteredProducts.forEach(product => {
@@ -2920,6 +2933,20 @@ const ReportManager = {
             noResults.textContent = currentLanguage === 'ar' ? 'لا توجد نتائج' : 'No results found';
             dropdown.appendChild(noResults);
         }
+    },
+    
+    getSelectedProductIds: function() {
+        const selectedIds = [];
+        const productGroups = document.querySelectorAll('.product-group');
+        
+        productGroups.forEach(group => {
+            const hiddenInput = group.querySelector('.selected-product-id');
+            if (hiddenInput && hiddenInput.value) {
+                selectedIds.push(parseInt(hiddenInput.value));
+            }
+        });
+        
+        return selectedIds;
     },
     
     addProduct: function() {
@@ -2982,6 +3009,20 @@ const ReportManager = {
         productGroup.remove();
         this.updateRemoveProductButtons();
         this.renumberProducts();
+        
+        // Refresh all product dropdowns to show the removed product again
+        this.refreshAllProductDropdowns();
+    },
+    
+    refreshAllProductDropdowns: function() {
+        const containers = document.querySelectorAll('.product-select-container');
+        containers.forEach(container => {
+            const dropdown = container.querySelector('.product-dropdown');
+            const searchInput = container.querySelector('.product-search-input');
+            if (dropdown && searchInput) {
+                this.filterProductOptions(dropdown, searchInput.value.toLowerCase());
+            }
+        });
     },
     
     updateRemoveProductButtons: function() {
@@ -3205,11 +3246,11 @@ const ReportManager = {
                             <h3>${currentLanguage === 'ar' ? 'منتجات الزيارة' : 'Visit Products'}</h3>
                             <div class="products-list">
                                 ${report.products.map((product, index) => {
-                                    // Check if displayed price matches taxed client price
-                                    const clientPrice = product.taxed_price_client;
+                                    // Check if displayed price matches our internal store price
+                                    const storePrice = product.taxed_price_store;
                                     const displayedPrice = product.displayed_price;
-                                    const priceMatches = clientPrice && displayedPrice && Math.abs(clientPrice - displayedPrice) < 0.01;
-                                    const priceStyle = clientPrice && displayedPrice && !priceMatches ? 'color: #e74c3c; font-weight: bold;' : '';
+                                    const priceMatches = storePrice && displayedPrice && Math.abs(storePrice - displayedPrice) < 0.01;
+                                    const priceStyle = storePrice && displayedPrice && !priceMatches ? 'color: #e74c3c; font-weight: bold;' : '';
                                     
                                     return `
                                         <div class="product-item">
@@ -3224,15 +3265,15 @@ const ReportManager = {
                                                         <span style="${priceStyle}">${product.displayed_price} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</span>
                                                     </div>
                                                 ` : ''}
-                                                ${product.taxed_price_client ? `
+                                                ${product.taxed_price_store ? `
                                                     <div class="product-detail">
-                                                        <label>${currentLanguage === 'ar' ? 'السعر للعميل (شامل الضريبة):' : 'Client Price (Taxed):'}</label>
-                                                        <span style="${priceStyle}">${product.taxed_price_client} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</span>
+                                                        <label>${currentLanguage === 'ar' ? 'سعرنا الداخلي (شامل الضريبة):' : 'Our Internal Price (Taxed):'}</label>
+                                                        <span style="${priceStyle}">${product.taxed_price_store} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</span>
                                                     </div>
                                                 ` : ''}
-                                                ${clientPrice && displayedPrice && !priceMatches ? `
+                                                ${storePrice && displayedPrice && !priceMatches ? `
                                                     <div class="price-mismatch-alert">
-                                                        <span>${currentLanguage === 'ar' ? '⚠️ السعر المعروض لا يطابق السعر المحدد للعميل' : '⚠️ Displayed price does not match client price'}</span>
+                                                        <span>${currentLanguage === 'ar' ? '⚠️ السعر المعروض لا يطابق سعرنا الداخلي' : '⚠️ Displayed price does not match our internal price'}</span>
                                                     </div>
                                                 ` : ''}
                                                 ${product.expiry_date ? `

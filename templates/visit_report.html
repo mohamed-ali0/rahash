@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تقرير زيارة عميل</title>
     <style>
+        @font-face {
+            font-family: 'QaysSansPro';
+            src: url('/font/ArbFONTS-HTQaysSansPro-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'QaysSansPro';
+            src: url('/font/ArbFONTS-HTQaysSansPro-Regular.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -12,7 +26,7 @@
         }
         
         body {
-            font-family: 'Traditional Arabic', 'Simplified Arabic', 'Arial', sans-serif;
+            font-family: 'QaysSansPro', 'Traditional Arabic', 'Simplified Arabic', 'Arial', sans-serif;
             background: #e0e0e0;
             direction: rtl;
             margin: 0;
@@ -27,15 +41,27 @@
             margin: 0 auto;
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        /* Corner Logo */
+        .corner-logo {
+            position: absolute;
+            top: 10mm;
+            left: 10mm;
+            max-width: 52mm; /* Increased by 30% from 40mm */
+            max-height: 26mm; /* Increased by 30% from 20mm */
+            object-fit: contain;
+            z-index: 10;
         }
         
         /* Title - matching Word's style */
         .document-title {
             text-align: center;
-            font-size: 18pt;
+            font-size: 19.8pt; /* Increased by 10% from 18pt */
             font-weight: bold;
             margin-bottom: 20px;
-            color: #000;
+            color: #23407C;
         }
         
         /* Info lines - matching Word's formatting */
@@ -44,19 +70,22 @@
         }
         
         .info-line {
-            font-size: 14pt;
+            font-size: 15.4pt; /* Increased by 10% from 14pt */
             font-weight: bold;
             margin-bottom: 8px;
             line-height: 1.5;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
         
         .info-line span.label {
-            color: #000;
+            color: #23407C;
         }
         
         .info-line span.value {
             font-weight: normal;
-            color: #000;
+            color: #23407C;
             margin-right: 10px;
         }
         
@@ -71,9 +100,9 @@
         }
         
         .images-table td {
-            width: 33.33%;
-            height: 120px;
-            border: 1px solid #000;
+            width: 33.33%; /* Keep original width for 3 columns */
+            height: 180px; /* 16:9 aspect ratio: width/16*9 = 33.33%/16*9 ≈ 18.75% of container height */
+            border: 1px solid #CA9E3F;
             text-align: center;
             vertical-align: middle;
             padding: 5px;
@@ -81,14 +110,15 @@
         }
         
         .image-cell {
-            font-size: 12pt;
-            color: #333;
+            font-size: 13.2pt; /* Increased by 10% from 12pt */
+            color: #23407C;
         }
         
         .actual-image {
-            max-width: 95%;
-            max-height: 110px;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Maintains 16:9 aspect ratio while filling the cell */
+            object-position: center; /* Centers the image within the cell */
         }
         
         /* Notes section - matching Word's table */
@@ -98,21 +128,26 @@
         
         .notes-box {
             width: 100%;
-            border: 1px solid #000;
+            border: 1px solid #CA9E3F;
             min-height: 100px;
             padding: 10px;
         }
         
         .notes-header {
-            font-size: 12pt;
+            font-size: 13.2pt; /* Increased by 10% from 12pt */
             font-weight: bold;
             margin-bottom: 5px;
+            color: #23407C;
         }
         
         .notes-text {
-            font-size: 12pt;
+            font-size: 13.2pt; /* Increased by 10% from 12pt */
             line-height: 1.6;
             white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            color: #23407C;
         }
         
         /* Products table - matching Word's exact table */
@@ -123,30 +158,42 @@
         .products-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11pt;
+            font-size: 12.1pt; /* Increased by 10% from 11pt */
         }
         
         .products-table th,
         .products-table td {
-            border: 1px solid #000;
+            border: 1px solid #CA9E3F;
             padding: 5px 3px;
             text-align: center;
             height: 25px;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            color: #23407C;
         }
         
         .products-table th {
             background-color: #d9d9d9;
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 12.1pt; /* Increased by 10% from 11pt */
+            color: #23407C;
         }
         
         .products-table td {
-            font-size: 11pt;
+            font-size: 12.1pt; /* Increased by 10% from 11pt */
+            color: #23407C;
         }
         
         /* Column widths matching Word */
         .col-num { width: 5%; }
-        .col-product { width: 35%; }
+        .col-product { 
+            width: 35%; 
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
         .col-our-price { width: 15%; }
         .col-store-price { width: 15%; }
         .col-expiry { width: 15%; }
@@ -161,7 +208,7 @@
         .btn {
             padding: 10px 25px;
             margin: 0 10px;
-            font-size: 14pt;
+            font-size: 15.4pt; /* Increased by 10% from 14pt */
             font-weight: bold;
             border: none;
             border-radius: 5px;
@@ -215,6 +262,9 @@
 </head>
 <body>
     <div class="page">
+        <!-- Corner Logo -->
+        <img src="/logo_corner.png" alt="Logo" class="corner-logo">
+        
         <!-- Document Title -->
         <div class="document-title">تقرير زيارة عميل</div>
         
@@ -335,9 +385,20 @@
                 }
             }
             
-            // Set notes
+            // Set notes with proper formatting and numbering
             if (data.notes) {
-                document.getElementById('notes-content').textContent = data.notes;
+                const notesElement = document.getElementById('notes-content');
+                // Split notes by \n and create numbered list
+                const notesArray = data.notes.split('\\n').filter(note => note.trim() !== '');
+                if (notesArray.length > 0) {
+                    let notesHTML = '';
+                    notesArray.forEach((note, index) => {
+                        notesHTML += `${index + 1}. ${note.trim()}<br>`;
+                    });
+                    notesElement.innerHTML = notesHTML;
+                } else {
+                    notesElement.textContent = data.notes;
+                }
             }
             
             // Set products

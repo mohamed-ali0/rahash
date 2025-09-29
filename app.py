@@ -170,6 +170,16 @@ def top_bar_logo_file():
     """Serve top bar logo file"""
     return send_file('top_bar_logo.png', mimetype='image/png')
 
+@app.route('/font/<path:filename>')
+def font_files(filename):
+    """Serve font files"""
+    return send_file(f'templates/font/{filename}', mimetype='font/ttf')
+
+@app.route('/logo_corner.png')
+def logo_corner_file():
+    """Serve corner logo file"""
+    return send_file('templates/logo_corner.png', mimetype='image/png')
+
 # Client Management Routes
 @app.route('/api/clients', methods=['GET'])
 @token_required
@@ -1173,7 +1183,7 @@ def get_visit_report_html(report_id):
         for rp in report.products:
             product_data = {
                 'name': rp.product.name if rp.product else 'منتج غير محدد',
-                'our_price': f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد',
+                'our_price': f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد',
                 'displayed_price': f"{rp.displayed_price:.2f} ريال",
                 'nearly_expired': rp.nearly_expired,
                 'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else ''
@@ -1234,7 +1244,7 @@ def get_visit_report_data(current_user, report_id):
         for rp in report.products:
             product_data = {
                 'name': rp.product.name if rp.product else 'منتج غير محدد',
-                'our_price': f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد',
+                'our_price': f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد',
                 'displayed_price': f"{rp.displayed_price:.2f} ريال",
                 'nearly_expired': rp.nearly_expired,
                 'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else ''
@@ -1333,7 +1343,7 @@ def print_visit_report(current_user, report_id):
                     
                     # Prepare product data
                     product_name = rp.product.name if rp.product else 'منتج غير محدد'
-                    our_price = f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد'
+                    our_price = f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد'
                     displayed_price = f"{rp.displayed_price:.2f} ريال"
                     nearly_expired = "نعم" if rp.nearly_expired else "لا"
                     expiry_date = rp.expiry_date.strftime('%Y-%m-%d') if rp.expiry_date else 'غير محدد'
@@ -1389,7 +1399,7 @@ def print_visit_report(current_user, report_id):
                     
                     # Fill the new row cells
                     product_name = rp.product.name if rp.product else 'منتج غير محدد'
-                    our_price = f"{rp.product.taxed_price_client:.2f} ريال" if rp.product and rp.product.taxed_price_client else 'غير محدد'
+                    our_price = f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد'
                     displayed_price = f"{rp.displayed_price:.2f} ريال"
                     nearly_expired = "نعم" if rp.nearly_expired else "لا"
                     expiry_date = rp.expiry_date.strftime('%Y-%m-%d') if rp.expiry_date else 'غير محدد'
