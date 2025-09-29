@@ -708,7 +708,7 @@ def delete_product(current_user, product_id):
 @app.route('/api/visit-reports', methods=['GET'])
 @token_required
 def get_visit_reports(current_user):
-    """Get all active visit reports for current user"""
+    """Get all active visit reports - users only see their own reports, super admin sees all"""
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
         
@@ -806,6 +806,15 @@ def create_visit_report(current_user):
         if not data.get('visit_date'):
             return jsonify({'message': 'Visit date is required'}), 400
         
+        # Check if user has access to this client
+        client = Client.query.get(data['client_id'])
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Only super admin can create reports for any client, others only for assigned clients
+        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+            return jsonify({'message': 'Permission denied: You can only create reports for clients assigned to you'}), 403
+        
         # Create visit report
         report = VisitReport(
             client_id=data['client_id'],
@@ -869,6 +878,88 @@ def create_visit_report(current_user):
         db.session.rollback()
         print(f"Error creating visit report: {e}")
         return jsonify({'message': 'Failed to create visit report', 'error': str(e)}), 500
+
+@app.route('/api/visit-reports/<int:report_id>', methods=['GET'])
+@token_required
+def get_visit_report(current_user, report_id):
+    """Get a specific visit report (only if user owns it or is super admin)"""
+    try:
+        report = VisitReport.query.get(report_id)
+        if not report:
+            return jsonify({'message': 'Visit report not found'}), 404
+        
+        # Check permission - only super admin or report creator can view
+        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Get first image for display
+        first_image = None
+        if report.images:
+            first_image = base64.b64encode(report.images[0].image_data).decode('utf-8')
+        
+        # Get all images
+        images = []
+        for img in report.images:
+            images.append({
+                'id': img.id,
+                'filename': img.filename,
+                'data': base64.b64encode(img.image_data).decode('utf-8'),
+                'created_at': img.created_at.isoformat()
+            })
+        
+        # Get all notes
+        notes = []
+        for note in report.notes:
+            notes.append({
+                'id': note.id,
+                'note_text': note.note_text,
+                'created_at': note.created_at.isoformat()
+            })
+        
+        # Get products information
+        products = []
+        for rp in report.products:
+            product_data = {
+                'id': rp.id,
+                'product_id': rp.product_id,
+                'product_name': rp.product.name if rp.product else 'Unknown Product',
+                'displayed_price': float(rp.displayed_price),
+                'nearly_expired': rp.nearly_expired,
+                'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None,
+                'created_at': rp.created_at.isoformat()
+            }
+            
+            # Add product pricing for comparison
+            if rp.product:
+                product_data.update({
+                    'taxed_price_store': float(rp.product.taxed_price_store) if rp.product.taxed_price_store else 0.0,
+                    'untaxed_price_store': float(rp.product.untaxed_price_store) if rp.product.untaxed_price_store else 0.0,
+                    'taxed_price_client': float(rp.product.taxed_price_client) if rp.product.taxed_price_client else 0.0,
+                    'untaxed_price_client': float(rp.product.untaxed_price_client) if rp.product.untaxed_price_client else 0.0
+                })
+            
+            products.append(product_data)
+        
+        report_data = {
+            'id': report.id,
+            'client_id': report.client_id,
+            'client_name': report.client.name if report.client else 'Unknown Client',
+            'user_id': report.user_id,
+            'username': report.user.username if report.user else 'Unknown User',
+            'visit_date': report.visit_date.isoformat(),
+            'created_at': report.created_at.isoformat(),
+            'first_image': first_image,
+            'images': images,
+            'notes': notes,
+            'products': products,
+            'can_edit': current_user.role == UserRole.SUPER_ADMIN or report.user_id == current_user.id,
+            'is_active': report.is_active
+        }
+        
+        return jsonify(report_data), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch visit report', 'error': str(e)}), 500
 
 @app.route('/api/visit-reports/<int:report_id>', methods=['PUT'])
 @token_required
