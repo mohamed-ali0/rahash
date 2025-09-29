@@ -49,7 +49,7 @@ function initializeSidebar() {
 window.addEventListener('resize', function() {
     initializeSidebar();
 });
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5009/api';
 
 // DOM Content Loaded Event
 document.addEventListener('DOMContentLoaded', function() {
