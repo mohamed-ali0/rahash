@@ -276,7 +276,13 @@
             </div>
             <div class="info-line">
                 <span class="label">التاريخ:</span>
-                <span class="value" id="visit-date">تاريخ_زيارة</span>
+                <span class="value" id="visit-date">
+                    <span id="visit-day"></span>
+                    <span> - </span>
+                    <span id="visit-date-gregorian"></span>
+                    <span> - </span>
+                    <span id="visit-date-islamic"></span>
+                </span>
             </div>
         </div>
         
@@ -370,9 +376,30 @@
                 document.getElementById('client-name').textContent = data.client_name;
             }
             
-            // Set visit date
+            // Set visit date with Day, Gregorian and Islamic (Umm al-Qura) calendars
             if (data.visit_date) {
-                document.getElementById('visit-date').textContent = data.visit_date;
+                try {
+                    // Expecting format YYYY/MM/DD
+                    const parts = String(data.visit_date).split('/').map(p => parseInt(p, 10));
+                    const dateObj = (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2]))
+                        ? new Date(parts[0], parts[1] - 1, parts[2])
+                        : new Date(data.visit_date);
+
+                    const dayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(dateObj);
+                    const gregorian = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj);
+                    const islamic = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { year: 'numeric', month: 'long', day: 'numeric' }).format(dateObj);
+
+                    const dayEl = document.getElementById('visit-day');
+                    const gregEl = document.getElementById('visit-date-gregorian');
+                    const islEl = document.getElementById('visit-date-islamic');
+                    if (dayEl) dayEl.textContent = dayName;
+                    if (gregEl) gregEl.textContent = gregorian;
+                    if (islEl) islEl.textContent = islamic;
+                } catch (e) {
+                    // Fallback to original string on any error
+                    const visitDateContainer = document.getElementById('visit-date');
+                    if (visitDateContainer) visitDateContainer.textContent = data.visit_date;
+                }
             }
             
             // Set images

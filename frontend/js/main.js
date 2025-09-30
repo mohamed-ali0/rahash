@@ -227,6 +227,14 @@ function showSection(sectionId) {
                 const savedReportStatus = localStorage.getItem('reportStatusFilter') || 'active';
                 ReportManager.loadReports(savedReportStatus);
                 break;
+            case 'settings':
+                // Only show settings for super admin
+                if (userInfo && userInfo.role === 'SUPER_ADMIN') {
+                    SettingsManager.loadSettings();
+                } else {
+                    alert(currentLanguage === 'ar' ? 'ليس لديك صلاحية للوصول إلى إعدادات النظام' : 'You do not have permission to access system settings');
+                }
+                break;
         }
     }
 }
@@ -1805,6 +1813,17 @@ const ProductManager = {
         } else {
             console.log('Add product button not found in DOM');
         }
+        
+        // Show/hide settings menu item based on role
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const settingsMenuItem = document.querySelector('a[href="#settings"]');
+        if (settingsMenuItem && userInfo) {
+            if (userInfo.role === 'SUPER_ADMIN') {
+                settingsMenuItem.style.display = 'block';
+            } else {
+                settingsMenuItem.style.display = 'none';
+            }
+        }
     },
     
     displayProducts: function(products) {
@@ -2505,6 +2524,81 @@ const ProductManager = {
     }
 };
 
+// Settings Management Functions
+const SettingsManager = {
+    currentSettings: {},
+    
+    loadSettings: async function() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`, {
+                headers: getAuthHeaders()
+            });
+            if (response.ok) {
+                const settings = await response.json();
+                this.currentSettings = settings;
+                this.displaySettings(settings);
+            } else {
+                console.error('Failed to load settings');
+                this.loadDefaultSettings();
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            this.loadDefaultSettings();
+        }
+    },
+    
+    loadDefaultSettings: function() {
+        const defaultSettings = {
+            price_tolerance: 1.00
+        };
+        this.currentSettings = defaultSettings;
+        this.displaySettings(defaultSettings);
+    },
+    
+    displaySettings: function(settings) {
+        const priceToleranceInput = document.getElementById('priceTolerance');
+        if (priceToleranceInput) {
+            priceToleranceInput.value = settings.price_tolerance || 1.00;
+        }
+    },
+    
+    savePriceTolerance: async function() {
+        const priceToleranceInput = document.getElementById('priceTolerance');
+        const tolerance = parseFloat(priceToleranceInput.value);
+        
+        if (isNaN(tolerance) || tolerance < 0) {
+            alert(currentLanguage === 'ar' ? 'يرجى إدخال قيمة صحيحة لتسامح السعر' : 'Please enter a valid price tolerance value');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings/price-tolerance`, {
+                method: 'PUT',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ price_tolerance: tolerance })
+            });
+            
+            if (response.ok) {
+                this.currentSettings.price_tolerance = tolerance;
+                alert(currentLanguage === 'ar' ? 'تم حفظ إعدادات التسعير بنجاح' : 'Pricing settings saved successfully');
+            } else {
+                const errorData = await response.json();
+                alert(currentLanguage === 'ar' ? 'خطأ في حفظ الإعدادات' : 'Error saving settings: ' + (errorData.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error saving price tolerance:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server connection error');
+        }
+    },
+    
+    getPriceTolerance: function() {
+        return this.currentSettings.price_tolerance || 1.00;
+    }
+};
+
 // Report Management Functions
 const ReportManager = {
     currentReports: [],
@@ -2697,14 +2791,7 @@ const ReportManager = {
         } else {
             // Display reports cards
             reportsList.innerHTML = reports.map(report => {
-                const visitDate = new Date(report.visit_date).toLocaleDateString(
-                    currentLanguage === 'ar' ? 'ar-SA' : 'en-US',
-                    { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                    }
-                );
+                const visitDate = ReportManager.formatReportDate(report.visit_date);
                 
                 const isInactive = report.is_active === false;
                 const cardClass = `report-card ${isInactive ? 'inactive' : ''}`;
@@ -2745,6 +2832,22 @@ const ReportManager = {
                     </div>
                 `;
             }).join('');
+        }
+    },
+
+    // Format date as: Day - Gregorian - Islamic (Umm al-Qura)
+    formatReportDate: function(dateStr) {
+        try {
+            const parts = String(dateStr).split('/').map(p => parseInt(p, 10));
+            const d = (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2]))
+                ? new Date(parts[0], parts[1] - 1, parts[2])
+                : new Date(dateStr);
+            const dayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(d);
+            const greg = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+            const isl = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
+            return `${dayName} - ${greg} - ${isl}`;
+        } catch (e) {
+            return dateStr;
         }
     },
     
@@ -3256,7 +3359,7 @@ const ReportManager = {
                 <div class="expanded-header">
                     <div class="expanded-title">
                         <h2>${report.client_name}</h2>
-                        <p class="visit-date">${new Date(report.visit_date).toLocaleDateString(currentLanguage === 'ar' ? 'ar-SA' : 'en-US')}</p>
+                        <p class="visit-date">${ReportManager.formatReportDate(report.visit_date)}</p>
                     </div>
                 </div>
                 
@@ -3266,10 +3369,11 @@ const ReportManager = {
                             <h3>${currentLanguage === 'ar' ? 'منتجات الزيارة' : 'Visit Products'}</h3>
                             <div class="products-list">
                                 ${report.products.map((product, index) => {
-                                    // Check if displayed price matches our internal store price
+                                    // Check if displayed price matches our internal store price within tolerance
                                     const storePrice = product.taxed_price_store;
                                     const displayedPrice = product.displayed_price;
-                                    const priceMatches = storePrice && displayedPrice && Math.abs(storePrice - displayedPrice) < 0.01;
+                                    const tolerance = SettingsManager.getPriceTolerance();
+                                    const priceMatches = storePrice && displayedPrice && Math.abs(storePrice - displayedPrice) <= tolerance;
                                     const priceStyle = storePrice && displayedPrice && !priceMatches ? 'color: #e74c3c; font-weight: bold;' : '';
                                     
                                     return `
@@ -3298,8 +3402,8 @@ const ReportManager = {
                                                 ` : ''}
                                                 ${product.expiry_date ? `
                                                     <div class="product-detail">
-                                                        <label>${currentLanguage === 'ar' ? 'تاريخ الانتهاء:' : 'Expiry Date:'}</label>
-                                                        <span>${new Date(product.expiry_date).toLocaleDateString(currentLanguage === 'ar' ? 'ar-SA' : 'en-US')}</span>
+                                                        <label>${currentLanguage === 'ar' ? 'تاريخ الانتهاء (ميلادي/هجري):' : 'Expiry (Greg/Islamic):'}</label>
+                                                        <span>${ReportManager.formatReportDate(product.expiry_date)}</span>
                                                     </div>
                                                 ` : ''}
                                             </div>

@@ -62,12 +62,13 @@ Thumbs.db
 instance/
 .flaskenv
 
+# Allow committing instance and main DB, but ignore backups
+!instance/
+!instance/business_management.db
+instance/business_management_backup_*.db
+
 # Migration cache (keep migration files but not cache)
 migrations/versions/__pycache__/
-
-# Database files (server database is up to date, don't modify)
-instance/business_management.db
-instance/business_management_backup_*.db
 
 # Keep templates folder
 !templates/

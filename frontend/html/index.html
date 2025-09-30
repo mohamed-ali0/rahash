@@ -34,6 +34,7 @@
                     <li><a href="#clients" onclick="navigateAndCloseSidebar('clients')" data-ar="إدارة العملاء" data-en="Manage Clients">👥 <span data-ar="إدارة العملاء" data-en="Manage Clients">إدارة العملاء</span></a></li>
                     <li><a href="#products" onclick="navigateAndCloseSidebar('products')" data-ar="إدارة المنتجات" data-en="Manage Products">📦 <span data-ar="إدارة المنتجات" data-en="Manage Products">إدارة المنتجات</span></a></li>
                     <li><a href="#reports" onclick="navigateAndCloseSidebar('reports')" data-ar="تقارير الزيارات" data-en="Visit Reports">📈 <span data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</span></a></li>
+                    <li><a href="#settings" onclick="navigateAndCloseSidebar('settings')" data-ar="إعدادات النظام" data-en="System Settings">⚙️ <span data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</span></a></li>
                 </ul>
             </nav>
             
@@ -177,6 +178,25 @@
             </div>
             <div class="reports-grid" id="reportsList">
                 <!-- Visit report cards will be populated here -->
+            </div>
+        </section>
+        
+        <section id="settings">
+            <div class="section-header">
+                <h2 data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</h2>
+            </div>
+            <div class="settings-container">
+                <div class="settings-card">
+                    <h3 data-ar="إعدادات التسعير" data-en="Pricing Settings">إعدادات التسعير</h3>
+                    <div class="setting-item">
+                        <label for="priceTolerance" data-ar="تسامح السعر (ريال)" data-en="Price Tolerance (SAR)">تسامح السعر (ريال)</label>
+                        <div class="setting-input-group">
+                            <input type="number" id="priceTolerance" step="0.01" min="0" placeholder="1.00">
+                            <button class="btn btn-primary" onclick="SettingsManager.savePriceTolerance()" data-ar="حفظ" data-en="Save">حفظ</button>
+                        </div>
+                        <small class="setting-help" data-ar="الحد الأقصى للفرق المسموح به بين سعرنا الداخلي والسعر المعروض" data-en="Maximum allowed difference between our internal price and displayed price">الحد الأقصى للفرق المسموح به بين سعرنا الداخلي والسعر المعروض</small>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

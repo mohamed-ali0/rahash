@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from database.init import init_database
-from database.models import db, User, Person, Client, Product, VisitReport, VisitReportImage, VisitReportNote, VisitReportProduct, UserRole
+from database.models import db, User, Person, Client, Product, VisitReport, VisitReportImage, VisitReportNote, VisitReportProduct, UserRole, SystemSetting
 import jwt
 import base64
 from datetime import datetime, timedelta
@@ -1482,6 +1482,78 @@ def print_visit_report(current_user, report_id):
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
+
+# Settings API endpoints
+@app.route('/api/settings', methods=['GET'])
+@token_required
+def get_settings(current_user):
+    """Get all system settings (super admin only)"""
+    if current_user.role != UserRole.SUPER_ADMIN:
+        return jsonify({'message': 'Permission denied'}), 403
+    
+    try:
+        settings = SystemSetting.query.all()
+        settings_dict = {}
+        for setting in settings:
+            settings_dict[setting.key] = {
+                'value': setting.value,
+                'description': setting.description
+            }
+        
+        # Add default settings if they don't exist
+        if 'price_tolerance' not in settings_dict:
+            settings_dict['price_tolerance'] = {
+                'value': '1.00',
+                'description': 'Maximum allowed difference between internal and displayed price'
+            }
+        
+        return jsonify(settings_dict)
+    except Exception as e:
+        print(f"Error getting settings: {e}")
+        return jsonify({'message': 'Error loading settings'}), 500
+
+@app.route('/api/settings/price-tolerance', methods=['PUT'])
+@token_required
+def update_price_tolerance(current_user):
+    """Update price tolerance setting (super admin only)"""
+    if current_user.role != UserRole.SUPER_ADMIN:
+        return jsonify({'message': 'Permission denied'}), 403
+    
+    try:
+        data = request.get_json()
+        price_tolerance = data.get('price_tolerance')
+        
+        if price_tolerance is None:
+            return jsonify({'message': 'Price tolerance value is required'}), 400
+        
+        # Convert to float and validate
+        try:
+            tolerance_value = float(price_tolerance)
+            if tolerance_value < 0:
+                return jsonify({'message': 'Price tolerance must be non-negative'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'message': 'Invalid price tolerance value'}), 400
+        
+        # Update or create the setting
+        setting = SystemSetting.query.filter_by(key='price_tolerance').first()
+        if setting:
+            setting.value = str(tolerance_value)
+            setting.updated_at = datetime.utcnow()
+        else:
+            setting = SystemSetting(
+                key='price_tolerance',
+                value=str(tolerance_value),
+                description='Maximum allowed difference between internal and displayed price'
+            )
+            db.session.add(setting)
+        
+        db.session.commit()
+        return jsonify({'message': 'Price tolerance updated successfully'})
+        
+    except Exception as e:
+        print(f"Error updating price tolerance: {e}")
+        db.session.rollback()
+        return jsonify({'message': 'Error updating price tolerance'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5009)
