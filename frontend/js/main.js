@@ -426,6 +426,16 @@ function setupUserInterface() {
         if (userGreeting) {
             userGreeting.textContent = `${currentLanguage === 'ar' ? 'مرحباً' : 'Hello'}, ${user.username}`;
         }
+
+        // Hide System Settings for non-super-admin users
+        const settingsMenuItem = document.querySelector('a[href="#settings"]');
+        if (settingsMenuItem) {
+            if (isSuperAdmin(user)) {
+                settingsMenuItem.style.display = 'block';
+            } else {
+                settingsMenuItem.style.display = 'none';
+            }
+        }
     }
     
     // Setup logout button
@@ -433,6 +443,13 @@ function setupUserInterface() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
+}
+
+// Role helper to recognize admin variants
+function isSuperAdmin(user) {
+    if (!user || !user.role) return false;
+    const role = String(user.role).toUpperCase().replace(/\s+/g, '_');
+    return role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPERADMIN';
 }
 
 // Logout function
