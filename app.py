@@ -1518,20 +1518,25 @@ def get_settings(current_user):
         return jsonify({'message': 'Permission denied'}), 403
     
     try:
-        settings = SystemSetting.query.all()
-        settings_dict = {}
-        for setting in settings:
-            settings_dict[setting.key] = {
-                'value': setting.value,
-                'description': setting.description
+        # Load settings from JSON file
+        settings_file = 'sys_settings.json'
+        print(f"Loading settings from: {settings_file}")
+        if os.path.exists(settings_file):
+            with open(settings_file, 'r', encoding='utf-8') as f:
+                settings_dict = json.load(f)
+            print(f"Settings loaded from file: {settings_dict}")
+        else:
+            # Create default settings file if it doesn't exist
+            print("Settings file not found, creating default")
+            settings_dict = {
+                'price_tolerance': {
+                    'value': '1.00',
+                    'description': 'Maximum allowed difference between internal and displayed price'
+                }
             }
-        
-        # Add default settings if they don't exist
-        if 'price_tolerance' not in settings_dict:
-            settings_dict['price_tolerance'] = {
-                'value': '1.00',
-                'description': 'Maximum allowed difference between internal and displayed price'
-            }
+            with open(settings_file, 'w', encoding='utf-8') as f:
+                json.dump(settings_dict, f, indent=2, ensure_ascii=False)
+            print(f"Default settings created: {settings_dict}")
         
         return jsonify(settings_dict)
     except Exception as e:
@@ -1560,25 +1565,35 @@ def update_price_tolerance(current_user):
         except (ValueError, TypeError):
             return jsonify({'message': 'Invalid price tolerance value'}), 400
         
-        # Update or create the setting
-        setting = SystemSetting.query.filter_by(key='price_tolerance').first()
-        if setting:
-            setting.value = str(tolerance_value)
-            setting.updated_at = datetime.utcnow()
-        else:
-            setting = SystemSetting(
-                key='price_tolerance',
-                value=str(tolerance_value),
-                description='Maximum allowed difference between internal and displayed price'
-            )
-            db.session.add(setting)
+        # Update settings in JSON file
+        settings_file = 'sys_settings.json'
+        settings_dict = {}
         
-        db.session.commit()
+        # Load existing settings
+        if os.path.exists(settings_file):
+            with open(settings_file, 'r', encoding='utf-8') as f:
+                settings_dict = json.load(f)
+            print(f"Loaded existing settings: {settings_dict}")
+        else:
+            print("Settings file not found, creating new one")
+        
+        # Update price tolerance
+        settings_dict['price_tolerance'] = {
+            'value': str(tolerance_value),
+            'description': 'Maximum allowed difference between internal and displayed price'
+        }
+        
+        print(f"Updated settings to save: {settings_dict}")
+        
+        # Save back to file
+        with open(settings_file, 'w', encoding='utf-8') as f:
+            json.dump(settings_dict, f, indent=2, ensure_ascii=False)
+        
+        print(f"Settings saved to file: {settings_file}")
         return jsonify({'message': 'Price tolerance updated successfully'})
         
     except Exception as e:
         print(f"Error updating price tolerance: {e}")
-        db.session.rollback()
         return jsonify({'message': 'Error updating price tolerance'}), 500
 
 # Image Management Routes

@@ -3,12 +3,43 @@
 // Global variables
 let currentLanguage = 'ar';
 
+// Global scroll management system
+const ScrollManager = {
+    isScrollDisabled: false,
+    originalOverflow: '',
+    
+    disableScroll: function() {
+        if (!this.isScrollDisabled) {
+            this.originalOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            document.body.style.overflowY = 'hidden';
+            this.isScrollDisabled = true;
+            console.log('Scroll disabled');
+        }
+    },
+    
+    enableScroll: function() {
+        if (this.isScrollDisabled) {
+            document.body.style.overflow = this.originalOverflow || '';
+            document.body.style.overflowY = '';
+            this.isScrollDisabled = false;
+            console.log('Scroll enabled');
+        }
+    },
+    
+    forceEnableScroll: function() {
+        document.body.style.overflow = '';
+        document.body.style.overflowY = '';
+        this.isScrollDisabled = false;
+        console.log('Scroll force enabled');
+    }
+};
+
 // Global function to safely close modals and restore scrolling
 function closeModalAndRestoreScroll(modal) {
     if (modal) {
         modal.remove();
-        document.body.style.overflow = '';
-        document.body.style.overflowY = '';
+        ScrollManager.enableScroll();
     }
 }
 
@@ -17,7 +48,7 @@ function openModalAndDisableScroll(modal) {
     if (modal) {
         document.body.appendChild(modal);
         modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        ScrollManager.disableScroll();
         
         // Add click handler to close modal
         modal.addEventListener('click', function(e) {
@@ -30,17 +61,26 @@ function openModalAndDisableScroll(modal) {
 
 // Emergency function to restore scrolling if page gets frozen
 function emergencyRestoreScroll() {
-    document.body.style.overflow = '';
-    document.body.style.overflowY = '';
+    ScrollManager.forceEnableScroll();
     // Remove any stuck modals
     const modals = document.querySelectorAll('.expanded-modal, .fullscreen-image-modal, .modal-overlay');
     modals.forEach(modal => modal.remove());
+    console.log('Emergency scroll restore executed');
 }
 
 // Add emergency scroll restore on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Restore scroll on page load in case it was frozen
     emergencyRestoreScroll();
+});
+
+// Add keyboard shortcut to force restore scroll (Ctrl+Shift+R)
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+        e.preventDefault();
+        emergencyRestoreScroll();
+        alert('Scroll restored! If the page is still frozen, try refreshing.');
+    }
 });
 
 // Sidebar functionality
@@ -170,6 +210,13 @@ function initializeApp() {
     
     // Load dashboard data
     loadDashboardData();
+    
+    // Note: Settings will be loaded when user navigates to settings section
+    
+    // Ensure settings menu visibility after everything is loaded
+    setTimeout(() => {
+        setupUserInterface();
+    }, 100);
 }
 
 // Setup navigation functionality
@@ -229,8 +276,24 @@ function showSection(sectionId) {
                 break;
             case 'settings':
                 // Only show settings for super admin
-                if (userInfo && userInfo.role === 'SUPER_ADMIN') {
-                    SettingsManager.loadSettings();
+                const userInfo = localStorage.getItem('userInfo');
+                if (userInfo) {
+                    try {
+                        const user = JSON.parse(userInfo);
+                        if (user.role === 'super_admin') {
+                            // Ensure settings menu is visible
+                            setupUserInterface();
+                            // Load settings immediately and with delay to ensure field is populated
+                            SettingsManager.loadSettings();
+                            setTimeout(() => {
+                                SettingsManager.loadSettings();
+                            }, 200);
+                        } else {
+                            alert(currentLanguage === 'ar' ? 'ليس لديك صلاحية للوصول إلى إعدادات النظام' : 'You do not have permission to access system settings');
+                        }
+                    } catch (error) {
+                        console.error('Error parsing userInfo:', error);
+                    }
                 } else {
                     alert(currentLanguage === 'ar' ? 'ليس لديك صلاحية للوصول إلى إعدادات النظام' : 'You do not have permission to access system settings');
                 }
@@ -421,20 +484,25 @@ function checkAuthentication() {
 function setupUserInterface() {
     const userInfo = localStorage.getItem('userInfo');
     if (userInfo) {
-        const user = JSON.parse(userInfo);
-        const userGreeting = document.getElementById('userGreeting');
-        if (userGreeting) {
-            userGreeting.textContent = `${currentLanguage === 'ar' ? 'مرحباً' : 'Hello'}, ${user.username}`;
-        }
-
-        // Hide System Settings for non-super-admin users
-        const settingsMenuItem = document.getElementById('settingsMenuItem');
-        if (settingsMenuItem) {
-            if (isSuperAdmin(user)) {
-                settingsMenuItem.style.display = 'block';
-            } else {
-                settingsMenuItem.style.display = 'none';
+        try {
+            const user = JSON.parse(userInfo);
+            const userGreeting = document.getElementById('userGreeting');
+            if (userGreeting) {
+                userGreeting.textContent = `${currentLanguage === 'ar' ? 'مرحباً' : 'Hello'}, ${user.username}`;
             }
+
+            // Hide System Settings for non-super-admin users
+            const settingsMenuItem = document.getElementById('settingsMenuItem');
+            if (settingsMenuItem) {
+                const isAdmin = isSuperAdmin(user);
+                if (isAdmin) {
+                    settingsMenuItem.style.display = 'block';
+                } else {
+                    settingsMenuItem.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing userInfo:', error);
         }
     }
     
@@ -447,9 +515,11 @@ function setupUserInterface() {
 
 // Role helper to recognize admin variants
 function isSuperAdmin(user) {
-    if (!user || !user.role) return false;
-    const role = String(user.role).toUpperCase().replace(/\s+/g, '_');
-    return role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'SUPERADMIN';
+    if (!user || !user.role) {
+        return false;
+    }
+    const role = String(user.role).toLowerCase().replace(/\s+/g, '_');
+    return role === 'super_admin' || role === 'admin' || role === 'superadmin';
 }
 
 // Logout function
@@ -1163,7 +1233,7 @@ const ClientManager = {
         modal.className = 'fullscreen-image-modal';
         modal.innerHTML = `
             <div class="fullscreen-image-content">
-                <button class="fullscreen-close" onclick="this.closest('.fullscreen-image-modal').remove(); document.body.style.overflow = 'auto';">&times;</button>
+                <button class="fullscreen-close" onclick="this.closest('.fullscreen-image-modal').remove(); ScrollManager.enableScroll();">&times;</button>
                 <img src="data:image/jpeg;base64,${imageData}" alt="${clientName}">
                 <div class="image-title">${clientName}</div>
             </div>
@@ -1176,7 +1246,7 @@ const ClientManager = {
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 modal.remove();
-                document.body.style.overflow = 'auto';
+                ScrollManager.enableScroll();
             }
         });
     },
@@ -1271,7 +1341,7 @@ const ClientManager = {
         const modal = document.querySelector('.fullscreen-image-modal');
         if (modal) {
             modal.remove();
-            document.body.style.overflow = 'auto';
+            ScrollManager.enableScroll();
         }
         // Remove keyboard listener
         document.removeEventListener('keydown', this.handleKeyNavigation.bind(this));
@@ -1894,7 +1964,7 @@ const ProductManager = {
             } else {
                 // If no products, check user role from stored data
                 const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-                canEdit = userInfo.role === 'SUPER_ADMIN';
+                canEdit = userInfo.role === 'super_admin';
             }
             
             console.log('User can edit products:', canEdit);
@@ -1918,15 +1988,7 @@ const ProductManager = {
         }
         
         // Show/hide settings menu item based on role
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        const settingsMenuItem = document.getElementById('settingsMenuItem');
-        if (settingsMenuItem && userInfo) {
-            if (userInfo.role === 'SUPER_ADMIN') {
-                settingsMenuItem.style.display = 'block';
-            } else {
-                settingsMenuItem.style.display = 'none';
-            }
-        }
+        setupUserInterface();
     },
     
     displayProducts: function(products) {
@@ -2276,7 +2338,7 @@ const ProductManager = {
         
         // Show modal
         expandedModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        ScrollManager.disableScroll();
         
         // Close modal when clicking outside
         expandedModal.addEventListener('click', function(e) {
@@ -2290,7 +2352,7 @@ const ProductManager = {
         const expandedModal = document.getElementById('expandedModal');
         if (expandedModal) {
             expandedModal.classList.remove('active');
-            document.body.style.overflow = '';
+            ScrollManager.enableScroll();
         }
     },
     
@@ -2334,7 +2396,7 @@ const ProductManager = {
         `;
         
         fullscreenModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        ScrollManager.disableScroll();
         
         // Close on overlay click
         fullscreenModal.addEventListener('click', function(e) {
@@ -2400,7 +2462,7 @@ const ProductManager = {
         const fullscreenModal = document.getElementById('fullscreenImageModal');
         if (fullscreenModal) {
             fullscreenModal.classList.remove('active');
-            document.body.style.overflow = '';
+            ScrollManager.enableScroll();
         }
         
         // Clean up keyboard event listener
@@ -2513,14 +2575,14 @@ const ProductManager = {
         `;
         
         modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        ScrollManager.disableScroll();
     },
     
     closeAddModal: function() {
         const modal = document.getElementById('addProductModal');
         if (modal) {
             modal.style.display = 'none';
-            document.body.style.overflow = '';
+            ScrollManager.enableScroll();
         }
     },
     
@@ -2719,15 +2781,18 @@ const SettingsManager = {
     
     loadSettings: async function() {
         try {
+            console.log('Loading settings...');
             const response = await fetch(`${API_BASE_URL}/settings`, {
                 headers: getAuthHeaders()
             });
+            console.log('Settings response status:', response.status);
             if (response.ok) {
                 const settings = await response.json();
+                console.log('Settings loaded from server:', settings);
                 this.currentSettings = settings;
                 this.displaySettings(settings);
             } else {
-                console.error('Failed to load settings');
+                console.error('Failed to load settings, status:', response.status);
                 this.loadDefaultSettings();
             }
         } catch (error) {
@@ -2745,9 +2810,28 @@ const SettingsManager = {
     },
     
     displaySettings: function(settings) {
+        console.log('Displaying settings:', settings);
         const priceToleranceInput = document.getElementById('priceTolerance');
+        console.log('Price tolerance input found:', !!priceToleranceInput);
         if (priceToleranceInput) {
-            priceToleranceInput.value = settings.price_tolerance || 1.00;
+            // Handle both old format (direct value) and new format (object with value property)
+            let toleranceValue = 1.00;
+            if (settings.price_tolerance) {
+                console.log('Price tolerance setting found:', settings.price_tolerance);
+                if (typeof settings.price_tolerance === 'object' && settings.price_tolerance.value) {
+                    toleranceValue = parseFloat(settings.price_tolerance.value);
+                    console.log('Using object format, value:', toleranceValue);
+                } else if (typeof settings.price_tolerance === 'string' || typeof settings.price_tolerance === 'number') {
+                    toleranceValue = parseFloat(settings.price_tolerance);
+                    console.log('Using direct format, value:', toleranceValue);
+                }
+            } else {
+                console.log('No price_tolerance setting found, using default');
+            }
+            priceToleranceInput.value = toleranceValue;
+            console.log('Set price tolerance input value to:', toleranceValue);
+        } else {
+            console.error('Price tolerance input not found!');
         }
     },
     
@@ -2784,7 +2868,14 @@ const SettingsManager = {
     },
     
     getPriceTolerance: function() {
-        return this.currentSettings.price_tolerance || 1.00;
+        if (this.currentSettings.price_tolerance) {
+            if (typeof this.currentSettings.price_tolerance === 'object' && this.currentSettings.price_tolerance.value) {
+                return parseFloat(this.currentSettings.price_tolerance.value);
+            } else if (typeof this.currentSettings.price_tolerance === 'string' || typeof this.currentSettings.price_tolerance === 'number') {
+                return parseFloat(this.currentSettings.price_tolerance);
+            }
+        }
+        return 1.00;
     }
 };
 
@@ -3758,7 +3849,7 @@ const ReportManager = {
         
         document.body.appendChild(modal);
         modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+        ScrollManager.disableScroll();
     },
     
     viewReportImages: function(reportId, startIndex = 0) {
@@ -3949,10 +4040,22 @@ const ReportManager = {
                         ${question.options.map(option => `
                             <label class="mcq-option">
                                 <input type="radio" name="predefined_answer_${question.id}" value="${option}">
-                                <span>${option}</span>
+                                <div class="option-content">
+                                    <span>${option}</span>
+                                </div>
                             </label>
                         `).join('')}
                     </div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="ReportManager.addPredefinedAnswer(${question.id})">
+                        ${currentLanguage === 'ar' ? 'إضافة الإجابة' : 'Add Answer'}
+                    </button>
+                </div>
+            `;
+        } else if (question.type === 'date') {
+            answerHtml = `
+                <div class="form-group predefined-answer-group">
+                    <label>${question.question}</label>
+                    <input type="date" id="predefined_date_${question.id}" class="form-control">
                     <button type="button" class="btn btn-primary btn-sm" onclick="ReportManager.addPredefinedAnswer(${question.id})">
                         ${currentLanguage === 'ar' ? 'إضافة الإجابة' : 'Add Answer'}
                     </button>
@@ -3986,6 +4089,21 @@ const ReportManager = {
                 return;
             }
             answer = selectedOption.value;
+        } else if (question.type === 'date') {
+            const dateInput = document.getElementById(`predefined_date_${questionId}`);
+            if (!dateInput || !dateInput.value) {
+                alert(currentLanguage === 'ar' ? 'يرجى اختيار تاريخ' : 'Please select a date');
+                return;
+            }
+            // Convert date to Gregorian calendar with day name
+            const selectedDate = new Date(dateInput.value);
+            const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            const dayName = dayNames[selectedDate.getDay()];
+            const day = selectedDate.getDate();
+            const month = monthNames[selectedDate.getMonth()];
+            const year = selectedDate.getFullYear();
+            answer = `${dayName} - ${day} ${month} ${year}`;
         } else {
             const textArea = document.getElementById(`predefined_text_${questionId}`);
             if (!textArea || !textArea.value.trim()) {
