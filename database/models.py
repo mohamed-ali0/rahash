@@ -148,6 +148,7 @@ class VisitReportImage(db.Model):
     visit_report_id = db.Column(db.Integer, db.ForeignKey('visit_reports.id'), nullable=False)
     image_data = db.Column(db.LargeBinary, nullable=False)
     filename = db.Column(db.String(255))
+    is_suggested_products = db.Column(db.Boolean, default=False)  # Flag for suggested products images
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
@@ -173,8 +174,9 @@ class VisitReportProduct(db.Model):
     visit_report_id = db.Column(db.Integer, db.ForeignKey('visit_reports.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     displayed_price = db.Column(db.Numeric(10, 2))  # Price shown in store
-    nearly_expired = db.Column(db.Boolean, default=False)
-    expiry_date = db.Column(db.Date)  # Only if nearly_expired = True
+    expired_or_nearly_expired = db.Column(db.Boolean, default=False)
+    expiry_date = db.Column(db.Date)  # Only if expired_or_nearly_expired = True
+    units_count = db.Column(db.Integer)  # Number of units - required if expired_or_nearly_expired = True
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):

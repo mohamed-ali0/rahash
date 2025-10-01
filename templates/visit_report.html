@@ -196,8 +196,26 @@
         }
         .col-our-price { width: 15%; }
         .col-store-price { width: 15%; }
-        .col-expiry { width: 15%; }
         .col-date { width: 15%; }
+        .col-units { width: 15%; }
+        
+        /* Suggested Products Images Section */
+        .suggested-products-section {
+            margin-top: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .suggested-products-section .section-title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #23407C;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: linear-gradient(135deg, #fff5f5, #ffe8e8);
+            border: 2px solid #CA9E3F;
+            border-radius: 8px;
+        }
         
         /* Control buttons */
         .controls {
@@ -320,8 +338,8 @@
                         <th class="col-product">اسم المنتج</th>
                         <th class="col-our-price">سعر البيع</th>
                         <th class="col-store-price">السعر بالمحل</th>
-                        <th class="col-expiry">قرب الانتهاء</th>
                         <th class="col-date">تاريخ الانتهاء</th>
+                        <th class="col-units">العدد</th>
                     </tr>
                 </thead>
                 <tbody id="products-tbody">
@@ -330,8 +348,8 @@
                         <td>اسم_منتج</td>
                         <td>سعر بيع</td>
                         <td>سعر محل</td>
-                        <td>قرب</td>
                         <td>تاريخه</td>
+                        <td>العدد</td>
                     </tr>
                     <tr>
                         <td>2</td>
@@ -358,6 +376,24 @@
                         <td></td>
                     </tr>
                 </tbody>
+            </table>
+        </div>
+        
+        <!-- Suggested Products Images Section -->
+        <div class="suggested-products-section" id="suggested-products-section" style="display: none;">
+            <div class="section-title">صور المنتجات المقترحة</div>
+            <table class="images-table">
+                <tr>
+                    <td>
+                        <div class="image-cell" id="suggested-image-1">صورة مقترحة 1</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="suggested-image-2">صورة مقترحة 2</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="suggested-image-3">صورة مقترحة 3</div>
+                    </td>
+                </tr>
             </table>
         </div>
         
@@ -404,23 +440,59 @@
             
             // Set images
             if (data.images && Array.isArray(data.images)) {
-                for (let i = 0; i < Math.min(3, data.images.length); i++) {
+                console.log('Total images:', data.images.length);
+                // Separate regular images and suggested products images
+                const regularImages = data.images.filter(img => !img.is_suggested_products);
+                const suggestedImages = data.images.filter(img => img.is_suggested_products);
+                console.log('Regular images:', regularImages.length);
+                console.log('Suggested images:', suggestedImages.length);
+                
+                // Set regular images
+                for (let i = 0; i < Math.min(3, regularImages.length); i++) {
                     const imageCell = document.getElementById(`image-${i + 1}`);
-                    if (imageCell && data.images[i]) {
-                        imageCell.innerHTML = `<img src="data:image/jpeg;base64,${data.images[i]}" class="actual-image" alt="صورة ${i + 1}">`;
+                    if (imageCell && regularImages[i]) {
+                        imageCell.innerHTML = `<img src="data:image/jpeg;base64,${regularImages[i].data}" class="actual-image" alt="صورة ${i + 1}">`;
+                    }
+                }
+                
+                // Set suggested products images
+                if (suggestedImages.length > 0) {
+                    const suggestedSection = document.getElementById('suggested-products-section');
+                    if (suggestedSection) {
+                        suggestedSection.style.display = 'block';
+                        
+                        for (let i = 0; i < Math.min(3, suggestedImages.length); i++) {
+                            const imageCell = document.getElementById(`suggested-image-${i + 1}`);
+                            if (imageCell && suggestedImages[i]) {
+                                imageCell.innerHTML = `<img src="data:image/jpeg;base64,${suggestedImages[i].data}" class="actual-image" alt="صورة مقترحة ${i + 1}">`;
+                            }
+                        }
                     }
                 }
             }
             
-            // Set notes with proper formatting and numbering
+            // Set notes with proper formatting (no numbering)
             if (data.notes) {
                 const notesElement = document.getElementById('notes-content');
-                // Split notes by \n and create numbered list
+                // Split notes by \n and create list without numbering
                 const notesArray = data.notes.split('\\n').filter(note => note.trim() !== '');
                 if (notesArray.length > 0) {
                     let notesHTML = '';
-                    notesArray.forEach((note, index) => {
-                        notesHTML += `${index + 1}. ${note.trim()}<br>`;
+                    notesArray.forEach((note) => {
+                        // Process note to handle underlined answers and single asterisk
+                        let processedNote = note.trim();
+                        
+                        // Convert HTML <u> tags to proper underline formatting
+                        processedNote = processedNote.replace(/<u>(.*?)<\/u>/g, '<span style="text-decoration: underline;">$1</span>');
+                        
+                        // Remove any existing asterisks and add single asterisk
+                        processedNote = processedNote.replace(/^\*+\s*/, '');
+                        processedNote = '* ' + processedNote;
+                        
+                        // Style the single asterisk
+                        processedNote = processedNote.replace(/^\*/, '<span style="font-weight: bold; color: #CA9E3F;">*</span>');
+                        
+                        notesHTML += processedNote + '<br>';
                     });
                     notesElement.innerHTML = notesHTML;
                 } else {
@@ -440,8 +512,8 @@
                         <td>${product.name || ''}</td>
                         <td>${product.our_price || ''}</td>
                         <td>${product.displayed_price || ''}</td>
-                        <td>${product.nearly_expired ? 'نعم' : 'لا'}</td>
                         <td>${product.expiry_date || ''}</td>
+                        <td>${product.units_count || ''}</td>
                     `;
                 });
                 

@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from database.init import init_database
-from database.models import db, User, Person, Client, Product, VisitReport, VisitReportImage, VisitReportNote, VisitReportProduct, UserRole, SystemSetting
+from database.models import db, User, Person, Client, Product, VisitReport, VisitReportImage, VisitReportNote, VisitReportProduct, UserRole, SystemSetting, ClientImage, ProductImage
 import jwt
 import base64
 from datetime import datetime, timedelta
@@ -184,6 +184,18 @@ def logo_corner_file():
 def website_logo_file():
     """Serve website logo file for favicon"""
     return send_file('website_logo.png', mimetype='image/png')
+
+@app.route('/api/predefined-notes')
+@token_required
+def get_predefined_notes(current_user):
+    """Get predefined notes for visit reports"""
+    try:
+        with open('templates/predefined_notes.json', 'r', encoding='utf-8') as f:
+            predefined_notes = json.load(f)
+        return jsonify(predefined_notes)
+    except Exception as e:
+        print(f"Error loading predefined notes: {e}")
+        return jsonify({'message': 'Error loading predefined notes'}), 500
 
 # Client Management Routes
 @app.route('/api/clients', methods=['GET'])
@@ -762,6 +774,7 @@ def get_visit_reports(current_user):
                     'id': img.id,
                     'filename': img.filename,
                     'data': base64.b64encode(img.image_data).decode('utf-8'),
+                    'is_suggested_products': img.is_suggested_products,
                     'created_at': img.created_at.isoformat()
                 })
             
@@ -782,8 +795,9 @@ def get_visit_reports(current_user):
                     'product_id': rp.product_id,
                     'product_name': rp.product.name if rp.product else 'Unknown Product',
                     'displayed_price': float(rp.displayed_price) if rp.displayed_price else None,
-                    'nearly_expired': rp.nearly_expired,
-                    'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None
+                    'nearly_expired': rp.expired_or_nearly_expired,
+                    'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None,
+                    'units_count': rp.units_count
                 }
                 
                 # Add product pricing information for comparison
@@ -861,7 +875,8 @@ def create_visit_report(current_user):
                         report_image = VisitReportImage(
                             visit_report_id=report.id,
                             image_data=image_data,
-                            filename=img_data.get('filename', 'visit_image.jpg')
+                            filename=img_data.get('filename', 'visit_image.jpg'),
+                            is_suggested_products=img_data.get('is_suggested_products', False)
                         )
                         db.session.add(report_image)
                     except Exception as img_error:
@@ -887,8 +902,9 @@ def create_visit_report(current_user):
                         visit_report_id=report.id,
                         product_id=product_data['product_id'],
                         displayed_price=product_data.get('displayed_price'),
-                        nearly_expired=product_data.get('nearly_expired', False),
-                        expiry_date=datetime.strptime(product_data['expiry_date'], '%Y-%m-%d').date() if product_data.get('expiry_date') else None
+                        expired_or_nearly_expired=product_data.get('nearly_expired', False),
+                        expiry_date=datetime.strptime(product_data['expiry_date'], '%Y-%m-%d').date() if product_data.get('expiry_date') else None,
+                        units_count=product_data.get('units_count')
                     )
                     db.session.add(report_product)
         
@@ -929,6 +945,7 @@ def get_visit_report(current_user, report_id):
                 'id': img.id,
                 'filename': img.filename,
                 'data': base64.b64encode(img.image_data).decode('utf-8'),
+                'is_suggested_products': img.is_suggested_products,
                 'created_at': img.created_at.isoformat()
             })
         
@@ -949,8 +966,9 @@ def get_visit_report(current_user, report_id):
                 'product_id': rp.product_id,
                 'product_name': rp.product.name if rp.product else 'Unknown Product',
                 'displayed_price': float(rp.displayed_price),
-                'nearly_expired': rp.nearly_expired,
+                'nearly_expired': rp.expired_or_nearly_expired,
                 'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None,
+                'units_count': rp.units_count,
                 'created_at': rp.created_at.isoformat()
             }
             
@@ -1182,7 +1200,10 @@ def get_visit_report_html(report_id):
         # Add images (first 3)
         for img in report.images[:3]:
             if img.image_data:
-                report_data['images'].append(base64.b64encode(img.image_data).decode('utf-8'))
+                report_data['images'].append({
+                    'data': base64.b64encode(img.image_data).decode('utf-8'),
+                    'is_suggested_products': img.is_suggested_products
+                })
         
         # Add products
         for rp in report.products:
@@ -1190,8 +1211,9 @@ def get_visit_report_html(report_id):
                 'name': rp.product.name if rp.product else 'منتج غير محدد',
                 'our_price': f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد',
                 'displayed_price': f"{rp.displayed_price:.2f} ريال",
-                'nearly_expired': rp.nearly_expired,
-                'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else ''
+                'nearly_expired': rp.expired_or_nearly_expired,
+                'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else '',
+                'units_count': rp.units_count
             }
             report_data['products'].append(product_data)
         
@@ -1243,7 +1265,10 @@ def get_visit_report_data(current_user, report_id):
         # Add images (first 3)
         for img in report.images[:3]:
             if img.image_data:
-                report_data['images'].append(base64.b64encode(img.image_data).decode('utf-8'))
+                report_data['images'].append({
+                    'data': base64.b64encode(img.image_data).decode('utf-8'),
+                    'is_suggested_products': img.is_suggested_products
+                })
         
         # Add products
         for rp in report.products:
@@ -1251,8 +1276,9 @@ def get_visit_report_data(current_user, report_id):
                 'name': rp.product.name if rp.product else 'منتج غير محدد',
                 'our_price': f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد',
                 'displayed_price': f"{rp.displayed_price:.2f} ريال",
-                'nearly_expired': rp.nearly_expired,
-                'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else ''
+                'nearly_expired': rp.expired_or_nearly_expired,
+                'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else '',
+                'units_count': rp.units_count
             }
             report_data['products'].append(product_data)
         
@@ -1350,7 +1376,7 @@ def print_visit_report(current_user, report_id):
                     product_name = rp.product.name if rp.product else 'منتج غير محدد'
                     our_price = f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد'
                     displayed_price = f"{rp.displayed_price:.2f} ريال"
-                    nearly_expired = "نعم" if rp.nearly_expired else "لا"
+                    nearly_expired = "نعم" if rp.expired_or_nearly_expired else "لا"
                     expiry_date = rp.expiry_date.strftime('%Y-%m-%d') if rp.expiry_date else 'غير محدد'
                     
                     # Find and replace product placeholders in this row
@@ -1406,7 +1432,7 @@ def print_visit_report(current_user, report_id):
                     product_name = rp.product.name if rp.product else 'منتج غير محدد'
                     our_price = f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد'
                     displayed_price = f"{rp.displayed_price:.2f} ريال"
-                    nearly_expired = "نعم" if rp.nearly_expired else "لا"
+                    nearly_expired = "نعم" if rp.expired_or_nearly_expired else "لا"
                     expiry_date = rp.expiry_date.strftime('%Y-%m-%d') if rp.expiry_date else 'غير محدد'
                     
                     if len(new_row.cells) > 0:
@@ -1554,6 +1580,101 @@ def update_price_tolerance(current_user):
         print(f"Error updating price tolerance: {e}")
         db.session.rollback()
         return jsonify({'message': 'Error updating price tolerance'}), 500
+
+# Image Management Routes
+@app.route('/api/clients/<int:client_id>/images/<int:image_id>', methods=['DELETE'])
+@token_required
+def delete_client_image(current_user, client_id, image_id):
+    """Delete a specific client image"""
+    try:
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Check permission
+        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Find the specific image
+        image = ClientImage.query.filter_by(id=image_id, client_id=client_id).first()
+        if not image:
+            return jsonify({'message': 'Image not found'}), 404
+        
+        db.session.delete(image)
+        db.session.commit()
+        
+        return jsonify({'message': 'Image deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting client image: {e}")
+        return jsonify({'message': 'Error deleting image'}), 500
+
+@app.route('/api/clients/<int:client_id>/thumbnail', methods=['DELETE'])
+@token_required
+def delete_client_thumbnail(current_user, client_id):
+    """Delete client thumbnail"""
+    try:
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Check permission
+        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        client.thumbnail = None
+        db.session.commit()
+        
+        return jsonify({'message': 'Thumbnail deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting client thumbnail: {e}")
+        return jsonify({'message': 'Error deleting thumbnail'}), 500
+
+@app.route('/api/products/<int:product_id>/images/<int:image_id>', methods=['DELETE'])
+@token_required
+def delete_product_image(current_user, product_id, image_id):
+    """Delete a specific product image"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Product not found'}), 404
+        
+        # Find the specific image
+        image = ProductImage.query.filter_by(id=image_id, product_id=product_id).first()
+        if not image:
+            return jsonify({'message': 'Image not found'}), 404
+        
+        db.session.delete(image)
+        db.session.commit()
+        
+        return jsonify({'message': 'Image deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting product image: {e}")
+        return jsonify({'message': 'Error deleting image'}), 500
+
+@app.route('/api/products/<int:product_id>/thumbnail', methods=['DELETE'])
+@token_required
+def delete_product_thumbnail(current_user, product_id):
+    """Delete product thumbnail"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Product not found'}), 404
+        
+        product.thumbnail = None
+        db.session.commit()
+        
+        return jsonify({'message': 'Thumbnail deleted successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting product thumbnail: {e}")
+        return jsonify({'message': 'Error deleting thumbnail'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5009)

@@ -428,7 +428,7 @@ function setupUserInterface() {
         }
 
         // Hide System Settings for non-super-admin users
-        const settingsMenuItem = document.querySelector('a[href="#settings"]');
+        const settingsMenuItem = document.getElementById('settingsMenuItem');
         if (settingsMenuItem) {
             if (isSuperAdmin(user)) {
                 settingsMenuItem.style.display = 'block';
@@ -1344,6 +1344,9 @@ const ClientManager = {
         const client = this.currentClients.find(c => c.id === clientId);
         if (!client) return;
         
+        // Debug: Log client data to see if additional_images is present
+        console.log('Client additional images:', client.additional_images);
+        
         // Create comprehensive edit modal
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
@@ -1382,11 +1385,41 @@ const ClientManager = {
                         </div>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'صورة العميل الرئيسية' : 'Client Thumbnail'}</label>
+                            ${client.thumbnail ? `
+                                <div class="current-image-container">
+                                    <div class="current-image">
+                                        <img src="data:image/jpeg;base64,${client.thumbnail}" alt="${client.name}">
+                                        <button type="button" class="btn-delete-image" onclick="ClientManager.deleteThumbnail(${client.id})" title="${currentLanguage === 'ar' ? 'حذف الصورة' : 'Delete Image'}">
+                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <small class="form-help">${currentLanguage === 'ar' ? 'الصورة الحالية - اضغط على X لحذفها' : 'Current image - click X to delete'}</small>
+                                </div>
+                            ` : ''}
                             <input type="file" name="thumbnail" accept="image/*">
                             <small class="form-help">${currentLanguage === 'ar' ? 'اختياري - صورة جديدة تمثل العميل' : 'Optional - new main image representing the client'}</small>
                         </div>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'صور إضافية جديدة' : 'New Additional Images'}</label>
+                            ${(client.additional_images && Array.isArray(client.additional_images) && client.additional_images.length > 0) ? `
+                                <div class="current-images-container">
+                                    <h5>${currentLanguage === 'ar' ? 'الصور الحالية:' : 'Current Images:'}</h5>
+                                    <div class="images-grid">
+                                        ${client.additional_images.map(img => `
+                                            <div class="current-image">
+                                                <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}">
+                                                <button type="button" class="btn-delete-image" onclick="ClientManager.deleteAdditionalImage(${client.id}, ${img.id})" title="${currentLanguage === 'ar' ? 'حذف الصورة' : 'Delete Image'}">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
                             <input type="file" name="additional_images" accept="image/*" multiple>
                             <small class="form-help">${currentLanguage === 'ar' ? 'اختياري - إضافة صور جديدة للعميل' : 'Optional - add new images to the client'}</small>
                         </div>
@@ -1764,6 +1797,59 @@ const ClientManager = {
             reader.onload = () => resolve(reader.result.split(',')[1]);
             reader.onerror = error => reject(error);
         });
+    },
+    
+    // Image deletion functions
+    deleteThumbnail: async function(clientId) {
+        if (!confirm(currentLanguage === 'ar' ? 'هل أنت متأكد من حذف الصورة الرئيسية؟' : 'Are you sure you want to delete the thumbnail?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${clientId}/thumbnail`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم حذف الصورة الرئيسية بنجاح' : 'Thumbnail deleted successfully');
+                // Refresh the client data and close the modal
+                this.loadClients();
+                document.querySelector('.modal-overlay')?.remove();
+            } else {
+                const error = await response.json();
+                alert(currentLanguage === 'ar' ? `خطأ في حذف الصورة: ${error.message}` : `Error deleting image: ${error.message}`);
+            }
+        } catch (error) {
+            console.error('Error deleting thumbnail:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Connection error');
+        }
+    },
+    
+    deleteAdditionalImage: async function(clientId, imageId) {
+        if (!confirm(currentLanguage === 'ar' ? 'هل أنت متأكد من حذف هذه الصورة؟' : 'Are you sure you want to delete this image?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${clientId}/images/${imageId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم حذف الصورة بنجاح' : 'Image deleted successfully');
+                // Refresh the client data and close the modal
+                this.loadClients();
+                document.querySelector('.modal-overlay')?.remove();
+            } else {
+                const error = await response.json();
+                alert(currentLanguage === 'ar' ? `خطأ في حذف الصورة: ${error.message}` : `Error deleting image: ${error.message}`);
+            }
+        } catch (error) {
+            console.error('Error deleting image:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Connection error');
+        }
     }
 };
 
@@ -1833,7 +1919,7 @@ const ProductManager = {
         
         // Show/hide settings menu item based on role
         const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        const settingsMenuItem = document.querySelector('a[href="#settings"]');
+        const settingsMenuItem = document.getElementById('settingsMenuItem');
         if (settingsMenuItem && userInfo) {
             if (userInfo.role === 'SUPER_ADMIN') {
                 settingsMenuItem.style.display = 'block';
@@ -1913,6 +1999,9 @@ const ProductManager = {
             return;
         }
         
+        // Debug: Log product data to see if images is present
+        console.log('Product images:', product.images);
+        
         // Create edit form
         const editForm = `
             <div class="modal-overlay" id="editProductModal">
@@ -1948,12 +2037,42 @@ const ProductManager = {
                         </div>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'الصورة الرئيسية (المصغرة)' : 'Main Thumbnail Image'}</label>
+                            ${product.thumbnail ? `
+                                <div class="current-image-container">
+                                    <div class="current-image">
+                                        <img src="data:image/jpeg;base64,${product.thumbnail}" alt="${product.name}">
+                                        <button type="button" class="btn-delete-image" onclick="ProductManager.deleteThumbnail(${product.id})" title="${currentLanguage === 'ar' ? 'حذف الصورة' : 'Delete Image'}">
+                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <small class="form-help">${currentLanguage === 'ar' ? 'الصورة الحالية - اضغط على X لحذفها' : 'Current image - click X to delete'}</small>
+                                </div>
+                            ` : ''}
                             <input type="file" id="editProductThumbnail" accept="image/*">
                             <small class="form-help">${currentLanguage === 'ar' ? 'الصورة التي تظهر في بطاقة المنتج' : 'Image that appears on product card'}</small>
                         </div>
                         
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'صور إضافية للمنتج' : 'Additional Product Images'}</label>
+                            ${(product.images && Array.isArray(product.images) && product.images.length > 0) ? `
+                                <div class="current-images-container">
+                                    <h5>${currentLanguage === 'ar' ? 'الصور الحالية:' : 'Current Images:'}</h5>
+                                    <div class="images-grid">
+                                        ${product.images.map(img => `
+                                            <div class="current-image">
+                                                <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}">
+                                                <button type="button" class="btn-delete-image" onclick="ProductManager.deleteAdditionalImage(${product.id}, ${img.id})" title="${currentLanguage === 'ar' ? 'حذف الصورة' : 'Delete Image'}">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
                             <input type="file" id="editAdditionalImages" accept="image/*" multiple>
                             <small class="form-help">${currentLanguage === 'ar' ? 'يمكنك اختيار عدة صور للمعرض' : 'You can select multiple images for gallery'}</small>
                         </div>
@@ -2538,6 +2657,59 @@ const ProductManager = {
                 alert(errorMessage);
             }
         }
+    },
+    
+    // Image deletion functions
+    deleteThumbnail: async function(productId) {
+        if (!confirm(currentLanguage === 'ar' ? 'هل أنت متأكد من حذف الصورة الرئيسية؟' : 'Are you sure you want to delete the thumbnail?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/${productId}/thumbnail`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم حذف الصورة الرئيسية بنجاح' : 'Thumbnail deleted successfully');
+                // Refresh the product data and close the modal
+                this.loadProducts();
+                document.querySelector('.modal-overlay')?.remove();
+            } else {
+                const error = await response.json();
+                alert(currentLanguage === 'ar' ? `خطأ في حذف الصورة: ${error.message}` : `Error deleting image: ${error.message}`);
+            }
+        } catch (error) {
+            console.error('Error deleting thumbnail:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Connection error');
+        }
+    },
+    
+    deleteAdditionalImage: async function(productId, imageId) {
+        if (!confirm(currentLanguage === 'ar' ? 'هل أنت متأكد من حذف هذه الصورة؟' : 'Are you sure you want to delete this image?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/${productId}/images/${imageId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم حذف الصورة بنجاح' : 'Image deleted successfully');
+                // Refresh the product data and close the modal
+                this.loadProducts();
+                document.querySelector('.modal-overlay')?.remove();
+            } else {
+                const error = await response.json();
+                alert(currentLanguage === 'ar' ? `خطأ في حذف الصورة: ${error.message}` : `Error deleting image: ${error.message}`);
+            }
+        } catch (error) {
+            console.error('Error deleting image:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Connection error');
+        }
     }
 };
 
@@ -2624,6 +2796,9 @@ const ReportManager = {
         // Create comprehensive add visit report modal
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
+        
+        // Load predefined notes
+        this.loadPredefinedNotes();
         modal.innerHTML = `
             <div class="modal-content large-modal">
                 <div class="modal-header">
@@ -2668,6 +2843,22 @@ const ReportManager = {
                         </div>
                     </div>
 
+                    <!-- Suggested Products Images Section -->
+                    <div class="form-section">
+                        <h4>${currentLanguage === 'ar' ? 'صور المنتجات المقترحة' : 'Suggested Products Images'}</h4>
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" name="has_suggested_products" id="hasSuggestedProductsCheckbox" onchange="ReportManager.toggleSuggestedProductsImages(this)">
+                                ${currentLanguage === 'ar' ? 'إضافة صور للمنتجات المقترحة' : 'Add suggested products images'}
+                            </label>
+                        </div>
+                        <div class="form-group suggested-products-section" id="suggestedProductsSection" style="display: none;">
+                            <label>${currentLanguage === 'ar' ? 'صور المنتجات المقترحة' : 'Suggested Products Images'}</label>
+                            <input type="file" name="suggested_products_images" accept="image/*" multiple>
+                            <small class="form-help">${currentLanguage === 'ar' ? 'يمكن اختيار عدة صور للمنتجات المقترحة' : 'You can select multiple images for suggested products'}</small>
+                        </div>
+                    </div>
+
                     <!-- Products Section -->
                     <div class="form-section">
                         <h4>${currentLanguage === 'ar' ? 'منتجات الزيارة' : 'Visit Products'}</h4>
@@ -2703,12 +2894,16 @@ const ReportManager = {
                                         <div class="form-group checkbox-group">
                                             <label>
                                                 <input type="checkbox" name="products[0][nearly_expired]" onchange="ReportManager.toggleExpiryDate(this)">
-                                                ${currentLanguage === 'ar' ? 'قارب على الانتهاء' : 'Nearly Expired'}
+                                                ${currentLanguage === 'ar' ? 'منتهي أو قارب على الانتهاء' : 'Expired or Nearly Expired'}
                                             </label>
                                         </div>
                                         <div class="form-group expiry-group" style="display: none;">
                                             <label>${currentLanguage === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}</label>
                                             <input type="date" name="products[0][expiry_date]">
+                                        </div>
+                                        <div class="form-group expiry-group" style="display: none;">
+                                            <label>${currentLanguage === 'ar' ? 'عدد الوحدات' : 'Units Count'}</label>
+                                            <input type="number" name="products[0][units_count]" min="1" placeholder="${currentLanguage === 'ar' ? 'عدد الوحدات' : 'Number of units'}">
                                         </div>
                                     </div>
                                 </div>
@@ -2719,12 +2914,26 @@ const ReportManager = {
                         </button>
                     </div>
 
+                    <!-- Predefined Notes Section -->
+                    <div class="form-section">
+                        <h4>${currentLanguage === 'ar' ? 'الملاحظات المحددة مسبقاً' : 'Predefined Notes'}</h4>
+                        <div class="form-group">
+                            <label>${currentLanguage === 'ar' ? 'اختر سؤال محدد مسبقاً' : 'Select Predefined Question'}</label>
+                            <select id="predefinedQuestionSelect" onchange="ReportManager.handlePredefinedQuestionChange()">
+                                <option value="">${currentLanguage === 'ar' ? '-- اختر سؤال --' : '-- Select Question --'}</option>
+                            </select>
+                        </div>
+                        <div id="predefinedAnswersContainer">
+                            <!-- Predefined answers will be added here -->
+                        </div>
+                    </div>
+
                     <!-- Notes Section -->
                     <div class="form-section">
                         <h4>${currentLanguage === 'ar' ? 'ملاحظات الزيارة' : 'Visit Notes'}</h4>
                         <div id="notesContainer">
                             <div class="form-group note-group">
-                                <label>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'} 1</label>
+                                <label>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'}</label>
                                 <textarea name="notes[]" rows="3" placeholder="${currentLanguage === 'ar' ? 'اكتب ملاحظة عن الزيارة...' : 'Write a note about the visit...'}"></textarea>
                                 <button type="button" class="remove-note-btn" onclick="ReportManager.removeNote(this)" style="display: none;">
                                     ${currentLanguage === 'ar' ? 'حذف' : 'Remove'}
@@ -3126,12 +3335,16 @@ const ReportManager = {
                     <div class="form-group checkbox-group">
                         <label>
                             <input type="checkbox" name="products[${productCount}][nearly_expired]" onchange="ReportManager.toggleExpiryDate(this)">
-                            ${currentLanguage === 'ar' ? 'قارب على الانتهاء' : 'Nearly Expired'}
+                            ${currentLanguage === 'ar' ? 'منتهي أو قارب على الانتهاء' : 'Expired or Nearly Expired'}
                         </label>
                     </div>
                     <div class="form-group expiry-group" style="display: none;">
                         <label>${currentLanguage === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}</label>
                         <input type="date" name="products[${productCount}][expiry_date]">
+                    </div>
+                    <div class="form-group expiry-group" style="display: none;">
+                        <label>${currentLanguage === 'ar' ? 'عدد الوحدات' : 'Units Count'}</label>
+                        <input type="number" name="products[${productCount}][units_count]" min="1" placeholder="${currentLanguage === 'ar' ? 'عدد الوحدات' : 'Number of units'}">
                     </div>
                 </div>
             </div>
@@ -3188,37 +3401,61 @@ const ReportManager = {
             const priceInput = group.querySelector('input[type="number"]');
             const checkboxInput = group.querySelector('input[type="checkbox"]');
             const dateInput = group.querySelector('input[type="date"]');
+            const unitsInput = group.querySelector('input[name*="units_count"]');
             
             hiddenInput.name = `products[${index}][product_id]`;
             priceInput.name = `products[${index}][displayed_price]`;
             checkboxInput.name = `products[${index}][nearly_expired]`;
             dateInput.name = `products[${index}][expiry_date]`;
+            if (unitsInput) unitsInput.name = `products[${index}][units_count]`;
         });
     },
     
     toggleExpiryDate: function(checkbox) {
         const productGroup = checkbox.closest('.product-group');
-        const expiryGroup = productGroup.querySelector('.expiry-group');
+        const expiryGroups = productGroup.querySelectorAll('.expiry-group');
         const expiryInput = productGroup.querySelector('input[type="date"]');
+        const unitsInput = productGroup.querySelector('input[name*="units_count"]');
         
         if (checkbox.checked) {
-            expiryGroup.style.display = 'block';
-            expiryInput.required = true;
+            expiryGroups.forEach(group => {
+                group.style.display = 'block';
+                const input = group.querySelector('input');
+                if (input) input.required = true;
+            });
         } else {
-            expiryGroup.style.display = 'none';
-            expiryInput.required = false;
-            expiryInput.value = '';
+            expiryGroups.forEach(group => {
+                group.style.display = 'none';
+                const input = group.querySelector('input');
+                if (input) {
+                    input.required = false;
+                    input.value = '';
+                }
+            });
+        }
+    },
+
+    toggleSuggestedProductsImages: function(checkbox) {
+        const suggestedProductsSection = document.getElementById('suggestedProductsSection');
+        const fileInput = suggestedProductsSection.querySelector('input[type="file"]');
+        
+        if (checkbox.checked) {
+            suggestedProductsSection.style.display = 'block';
+            fileInput.required = true;
+        } else {
+            suggestedProductsSection.style.display = 'none';
+            fileInput.required = false;
+            fileInput.value = '';
         }
     },
     
     addNote: function() {
         const notesContainer = document.getElementById('notesContainer');
-        const noteCount = notesContainer.querySelectorAll('.note-group').length + 1;
         
         const noteGroup = document.createElement('div');
         noteGroup.className = 'form-group note-group';
         noteGroup.innerHTML = `
-            <label>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'} ${noteCount}</label>
+            <label>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'}</label>
             <textarea name="notes[]" rows="3" placeholder="${currentLanguage === 'ar' ? 'اكتب ملاحظة عن الزيارة...' : 'Write a note about the visit...'}"></textarea>
             <button type="button" class="remove-note-btn" onclick="ReportManager.removeNote(this)">
                 ${currentLanguage === 'ar' ? 'حذف' : 'Remove'}
@@ -3252,7 +3489,7 @@ const ReportManager = {
         const noteGroups = document.querySelectorAll('.note-group');
         noteGroups.forEach((group, index) => {
             const label = group.querySelector('label');
-            label.textContent = `${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'} ${index + 1}`;
+            label.textContent = `${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'}`;
         });
     },
     
@@ -3287,7 +3524,8 @@ const ReportManager = {
                         const base64 = await this.convertToBase64(file);
                         images.push({
                             filename: file.name,
-                            data: base64
+                            data: base64,
+                            is_suggested_products: false
                         });
                     } catch (error) {
                         console.error('Error converting visit image:', error);
@@ -3300,6 +3538,35 @@ const ReportManager = {
                 reportData.images = images;
             }
         }
+
+        // Handle suggested products images
+        const suggestedProductsFiles = formData.getAll('suggested_products_images');
+        if (suggestedProductsFiles && suggestedProductsFiles.length > 0 && suggestedProductsFiles[0].size > 0) {
+            const suggestedImages = [];
+            for (let file of suggestedProductsFiles) {
+                if (file.size > 0) {
+                    try {
+                        const base64 = await this.convertToBase64(file);
+                        suggestedImages.push({
+                            filename: file.name,
+                            data: base64,
+                            is_suggested_products: true
+                        });
+                    } catch (error) {
+                        console.error('Error converting suggested products image:', error);
+                        alert(currentLanguage === 'ar' ? `خطأ في تحميل الصورة: ${file.name}` : `Error uploading image: ${file.name}`);
+                        return;
+                    }
+                }
+            }
+            if (suggestedImages.length > 0) {
+                // Add suggested products images to the main images array
+                if (!reportData.images) {
+                    reportData.images = [];
+                }
+                reportData.images = reportData.images.concat(suggestedImages);
+            }
+        }
         
         // Handle products
         const productGroups = form.querySelectorAll('.product-group');
@@ -3309,13 +3576,15 @@ const ReportManager = {
             const priceInput = group.querySelector('input[name*="displayed_price"]');
             const nearlyExpiredCheckbox = group.querySelector('input[name*="nearly_expired"]');
             const expiryDateInput = group.querySelector('input[name*="expiry_date"]');
+            const unitsCountInput = group.querySelector('input[name*="units_count"]');
             
             if (productIdInput.value) {
                 const product = {
                     product_id: parseInt(productIdInput.value),
                     displayed_price: priceInput.value ? parseFloat(priceInput.value) : null,
                     nearly_expired: nearlyExpiredCheckbox.checked,
-                    expiry_date: nearlyExpiredCheckbox.checked && expiryDateInput.value ? expiryDateInput.value : null
+                    expiry_date: nearlyExpiredCheckbox.checked && expiryDateInput.value ? expiryDateInput.value : null,
+                    units_count: nearlyExpiredCheckbox.checked && unitsCountInput.value ? parseInt(unitsCountInput.value) : null
                 };
                 products.push(product);
             }
@@ -3397,7 +3666,7 @@ const ReportManager = {
                                         <div class="product-item">
                                             <div class="product-header">
                                                 <h4>${product.product_name || (currentLanguage === 'ar' ? 'منتج غير معروف' : 'Unknown Product')}</h4>
-                                                ${product.nearly_expired ? `<span class="expired-badge">${currentLanguage === 'ar' ? 'قارب على الانتهاء' : 'Nearly Expired'}</span>` : ''}
+                                                ${product.nearly_expired ? `<span class="expired-badge">${currentLanguage === 'ar' ? 'منتهي أو قارب على الانتهاء' : 'Expired or Nearly Expired'}</span>` : ''}
                                             </div>
                                             <div class="product-details">
                                                 ${product.displayed_price ? `
@@ -3423,6 +3692,12 @@ const ReportManager = {
                                                         <span>${ReportManager.formatReportDate(product.expiry_date)}</span>
                                                     </div>
                                                 ` : ''}
+                                                ${product.units_count ? `
+                                                    <div class="product-detail">
+                                                        <label>${currentLanguage === 'ar' ? 'عدد الوحدات:' : 'Units Count:'}</label>
+                                                        <span>${product.units_count}</span>
+                                                    </div>
+                                                ` : ''}
                                             </div>
                                         </div>
                                     `;
@@ -3437,7 +3712,7 @@ const ReportManager = {
                             <div class="notes-list">
                                 ${report.notes.map((note, index) => `
                                     <div class="note-item">
-                                        <div class="note-header">${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'} ${index + 1}</div>
+                                        <div class="note-header">${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'}</div>
                                         <div class="note-text">${note.note_text}</div>
                                     </div>
                                 `).join('')}
@@ -3455,6 +3730,7 @@ const ReportManager = {
                                             <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}" title="${img.filename}">
                                             <div class="gallery-overlay">
                                                 <span class="gallery-filename">${img.filename}</span>
+                                                ${img.is_suggested_products ? `<span class="suggested-products-badge">${currentLanguage === 'ar' ? 'منتجات مقترحة' : 'Suggested Products'}</span>` : ''}
                                             </div>
                                         </div>
                                     `).join('')}
@@ -3606,6 +3882,151 @@ const ReportManager = {
             }
             
             sectionTitle.textContent = baseText + statusText;
+        }
+    },
+    
+    // Predefined Notes Functions
+    predefinedNotes: [],
+    
+    loadPredefinedNotes: async function() {
+        try {
+            // Add cache-busting parameter
+            const timestamp = new Date().getTime();
+            const response = await fetch(`${API_BASE_URL}/predefined-notes?t=${timestamp}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.predefinedNotes = data.questions || [];
+                this.populatePredefinedQuestions();
+            } else {
+                console.error('Failed to load predefined notes');
+            }
+        } catch (error) {
+            console.error('Error loading predefined notes:', error);
+        }
+    },
+    
+    populatePredefinedQuestions: function() {
+        const select = document.getElementById('predefinedQuestionSelect');
+        if (!select) return;
+        
+        // Clear existing options except the first one
+        select.innerHTML = '<option value="">' + (currentLanguage === 'ar' ? '-- اختر سؤال --' : '-- Select Question --') + '</option>';
+        
+        // Add predefined questions
+        this.predefinedNotes.forEach(question => {
+            const option = document.createElement('option');
+            option.value = question.id;
+            option.textContent = question.question;
+            select.appendChild(option);
+        });
+    },
+    
+    handlePredefinedQuestionChange: function() {
+        const select = document.getElementById('predefinedQuestionSelect');
+        const container = document.getElementById('predefinedAnswersContainer');
+        
+        if (!select || !container) return;
+        
+        const selectedId = select.value;
+        if (!selectedId) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        const question = this.predefinedNotes.find(q => q.id == selectedId);
+        if (!question) return;
+        
+        let answerHtml = '';
+        
+        if (question.type === 'mcq') {
+            answerHtml = `
+                <div class="form-group predefined-answer-group">
+                    <label>${question.question}</label>
+                    <div class="mcq-options">
+                        ${question.options.map(option => `
+                            <label class="mcq-option">
+                                <input type="radio" name="predefined_answer_${question.id}" value="${option}">
+                                <span>${option}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="ReportManager.addPredefinedAnswer(${question.id})">
+                        ${currentLanguage === 'ar' ? 'إضافة الإجابة' : 'Add Answer'}
+                    </button>
+                </div>
+            `;
+        } else {
+            answerHtml = `
+                <div class="form-group predefined-answer-group">
+                    <label>${question.question}</label>
+                    <textarea id="predefined_text_${question.id}" rows="3" placeholder="${currentLanguage === 'ar' ? 'اكتب إجابتك...' : 'Write your answer...'}"></textarea>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="ReportManager.addPredefinedAnswer(${question.id})">
+                        ${currentLanguage === 'ar' ? 'إضافة الإجابة' : 'Add Answer'}
+                    </button>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = answerHtml;
+    },
+    
+    addPredefinedAnswer: function(questionId) {
+        const question = this.predefinedNotes.find(q => q.id == questionId);
+        if (!question) return;
+        
+        let answer = '';
+        
+        if (question.type === 'mcq') {
+            const selectedOption = document.querySelector(`input[name="predefined_answer_${questionId}"]:checked`);
+            if (!selectedOption) {
+                alert(currentLanguage === 'ar' ? 'يرجى اختيار إجابة' : 'Please select an answer');
+                return;
+            }
+            answer = selectedOption.value;
+        } else {
+            const textArea = document.getElementById(`predefined_text_${questionId}`);
+            if (!textArea || !textArea.value.trim()) {
+                alert(currentLanguage === 'ar' ? 'يرجى كتابة إجابة' : 'Please write an answer');
+                return;
+            }
+            answer = textArea.value.trim();
+        }
+        
+        // Add to notes container
+        this.addPredefinedNoteToNotes(question.question, answer);
+        
+        // Clear the predefined answer form
+        document.getElementById('predefinedAnswersContainer').innerHTML = '';
+        document.getElementById('predefinedQuestionSelect').value = '';
+    },
+    
+    addPredefinedNoteToNotes: function(question, answer) {
+        const notesContainer = document.getElementById('notesContainer');
+        if (!notesContainer) return;
+        
+        // Create new note group with single asterisk
+        const noteGroup = document.createElement('div');
+        noteGroup.className = 'form-group note-group predefined-note';
+        noteGroup.innerHTML = `
+            <label>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'}</label>
+            <textarea name="notes[]" rows="3" readonly>* ${question}: <u>${answer}</u></textarea>
+            <button type="button" class="remove-note-btn" onclick="ReportManager.removeNote(this)">
+                ${currentLanguage === 'ar' ? 'حذف' : 'Remove'}
+            </button>
+        `;
+        
+        notesContainer.appendChild(noteGroup);
+        
+        // Show remove button if there are multiple notes
+        const allNotes = notesContainer.querySelectorAll('.note-group');
+        if (allNotes.length > 1) {
+            allNotes.forEach(note => {
+                const removeBtn = note.querySelector('.remove-note-btn');
+                if (removeBtn) removeBtn.style.display = 'inline-block';
+            });
         }
     }
 };
