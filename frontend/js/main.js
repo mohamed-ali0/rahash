@@ -3562,6 +3562,11 @@ const ReportManager = {
         noteGroup.remove();
         this.updateRemoveButtons();
         this.renumberNotes();
+        
+        // Refresh predefined questions dropdown if it exists
+        if (document.getElementById('predefinedQuestionSelect')) {
+            this.populatePredefinedQuestions();
+        }
     },
     
     updateRemoveButtons: function() {
@@ -4011,6 +4016,13 @@ const ReportManager = {
             const option = document.createElement('option');
             option.value = question.id;
             option.textContent = question.question;
+            
+            // Disable if already added
+            if (this.isPredefinedNoteAlreadyAdded(question.question)) {
+                option.disabled = true;
+                option.textContent += ' (تم إضافتها)';
+            }
+            
             select.appendChild(option);
         });
     },
@@ -4113,12 +4125,37 @@ const ReportManager = {
             answer = textArea.value.trim();
         }
         
+        // Check if this predefined note already exists
+        if (this.isPredefinedNoteAlreadyAdded(question.question)) {
+            alert(currentLanguage === 'ar' ? 'هذه الملاحظة المحددة مسبقاً تم إضافتها بالفعل' : 'This predefined note has already been added');
+            return;
+        }
+        
         // Add to notes container
         this.addPredefinedNoteToNotes(question.question, answer);
         
         // Clear the predefined answer form
         document.getElementById('predefinedAnswersContainer').innerHTML = '';
         document.getElementById('predefinedQuestionSelect').value = '';
+        
+        // Refresh the predefined questions dropdown to disable the added question
+        this.populatePredefinedQuestions();
+    },
+    
+    isPredefinedNoteAlreadyAdded: function(question) {
+        const notesContainer = document.getElementById('notesContainer');
+        if (!notesContainer) return false;
+        
+        const existingNotes = notesContainer.querySelectorAll('.predefined-note textarea');
+        for (let note of existingNotes) {
+            const noteText = note.value;
+            // Check if the question part matches (before the colon)
+            const questionPart = noteText.split(':')[0].replace('* ', '').trim();
+            if (questionPart === question) {
+                return true;
+            }
+        }
+        return false;
     },
     
     addPredefinedNoteToNotes: function(question, answer) {

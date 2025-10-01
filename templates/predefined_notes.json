@@ -99,7 +99,8 @@
     {
       "id": 18,
       "question": "راي و ملاحظات المشرف في العميل",
-      "type": "text"
+      "type": "mcq",
+      "options": ["Class A", "Class B", "Class C"]
     },
     {
       "id": 19,
