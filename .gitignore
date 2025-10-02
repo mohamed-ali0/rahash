@@ -62,12 +62,12 @@ Thumbs.db
 instance/
 .flaskenv
 
-# Database files - exclude from version control
-instance/
-*.db
+# Database files - allow main DB but ignore backups
+instance/business_management_backup_*.db
 *.sqlite
 *.sqlite3
-instance/business_management_backup_*.db
+# Allow main database to be pushed
+!instance/business_management.db
 
 # Migration cache (keep migration files but not cache)
 migrations/versions/__pycache__/
