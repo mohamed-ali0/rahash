@@ -482,8 +482,8 @@
                         // Process note to handle underlined answers and single asterisk
                         let processedNote = note.trim();
                         
-                        // Convert HTML <u> tags to proper underline formatting
-                        processedNote = processedNote.replace(/<u>(.*?)<\/u>/g, '<span style="text-decoration: underline;">$1</span>');
+                        // Convert HTML <u> tags to colored style (darker golden)
+                        processedNote = processedNote.replace(/<u>(.*?)<\/u>/g, '<span style="color: #B88A2A; font-weight: bold;">$1</span>');
                         
                         // Remove any existing asterisks and add single asterisk
                         processedNote = processedNote.replace(/^\*+\s*/, '');

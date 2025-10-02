@@ -588,6 +588,122 @@ def reactivate_client(current_user, client_id):
         db.session.rollback()
         return jsonify({'message': 'Failed to reactivate client', 'error': str(e)}), 500
 
+@app.route('/api/clients/<int:client_id>/last-report-summary', methods=['GET'])
+@token_required
+def get_client_last_report_summary(current_user, client_id):
+    """Get summary of client's last report"""
+    print(f"Getting summary for client {client_id} by user {current_user.username}")
+    try:
+        # Get the client
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Check if user has access to this client
+        if current_user.role == 'salesman' and client.salesman_id != current_user.id:
+            return jsonify({'message': 'Access denied'}), 403
+        
+        # Get the last report for this client
+        last_report = VisitReport.query.filter_by(
+            client_id=client_id,
+            is_active=True
+        ).order_by(VisitReport.created_at.desc()).first()
+        
+        if not last_report:
+            return jsonify({
+                'hasPreviousReports': False,
+                'lastReportId': None,
+                'priceIssues': False,
+                'expirationIssues': False,
+                'complaints': False,
+                'suggestedProducts': False
+            })
+        
+        # Analyze the report for issues
+        summary = {
+            'hasPreviousReports': True,
+            'lastReportId': last_report.id,
+            'priceIssues': False,
+            'expirationIssues': False,
+            'complaints': False,
+            'suggestedProducts': False
+        }
+        
+        # Check for price issues in products
+        for product in last_report.products:
+            if product.displayed_price and product.product.taxed_price_store:
+                price_diff = abs(product.displayed_price - product.product.taxed_price_store)
+                # Load price tolerance from settings
+                try:
+                    with open('sys_settings.json', 'r', encoding='utf-8') as f:
+                        settings = json.load(f)
+                        price_tolerance = float(settings.get('price_tolerance', {}).get('value', 1.0))
+                except:
+                    price_tolerance = 1.0
+                
+                if price_diff > price_tolerance:
+                    summary['priceIssues'] = True
+                    break
+        
+        # Check for expiration issues
+        for product in last_report.products:
+            if product.expired_or_nearly_expired:
+                summary['expirationIssues'] = True
+                break
+        
+        # Check for complaints in notes (predefined notes ID 16 and 17)
+        complaint_keywords = [
+            'شكوى', 'شكاوي', 'complaint', 'complaints', 
+            'مشكلة', 'مشاكل', 'problem', 'problems',
+            'شكوى عن المنتجات', 'شكوى عن المندوب', 'complaint about products', 'complaint about salesman',
+            'شكوى منتج', 'شكوى مندوب', 'product complaint', 'salesman complaint'
+        ]
+        
+        # Check for predefined complaint questions (ID 16 and 17)
+        for note in last_report.notes:
+            note_text = note.note_text.lower()
+            print(f"Checking note: {note_text}")
+            
+            # Check if this note contains the predefined complaint questions
+            if ('هل هناك شكوي عن المنتجات' in note_text or 'هل هناك شكوي عن المندوب' in note_text):
+                print(f"Found complaint question in note: {note_text}")
+                # If the question is present, check if there's an actual answer (not just the question)
+                # The answer should come after the colon
+                if ':' in note_text:
+                    answer_part = note_text.split(':')[1].strip()
+                    print(f"Answer part: '{answer_part}'")
+                    # If there's a meaningful answer (not empty, not just "لا" or "no")
+                    if answer_part and answer_part not in ['لا', 'no', 'نعم', 'yes'] and len(answer_part) > 2:
+                        print("Setting complaints to True based on predefined question answer")
+                        summary['complaints'] = True
+                        break
+            # Also check for general complaint keywords
+            if any(keyword in note_text for keyword in complaint_keywords):
+                print(f"Found complaint keyword in note: {note_text}")
+                summary['complaints'] = True
+                break
+        
+        # Check for suggested products
+        suggested_keywords = ['مقترح', 'suggest', 'suggestion', 'منتج جديد', 'new product']
+        for note in last_report.notes:
+            note_text = note.note_text.lower()
+            if any(keyword in note_text for keyword in suggested_keywords):
+                summary['suggestedProducts'] = True
+                break
+        
+        # Check for suggested products images
+        for image in last_report.images:
+            if image.is_suggested_products:
+                summary['suggestedProducts'] = True
+                break
+        
+        print(f"Returning summary: {summary}")
+        return jsonify(summary)
+        
+    except Exception as e:
+        print(f"Error getting client summary: {e}")
+        return jsonify({'message': 'Failed to get client summary', 'error': str(e)}), 500
+
 # Product Management Routes
 @app.route('/api/products', methods=['GET'])
 @token_required

@@ -62,9 +62,11 @@ Thumbs.db
 instance/
 .flaskenv
 
-# Allow committing instance and main DB, but ignore backups
-!instance/
-!instance/business_management.db
+# Database files - exclude from version control
+instance/
+*.db
+*.sqlite
+*.sqlite3
 instance/business_management_backup_*.db
 
 # Migration cache (keep migration files but not cache)

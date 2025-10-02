@@ -105,7 +105,24 @@
     {
       "id": 19,
       "question": "مقترح منتجات جديدة",
-      "type": "text"
+      "type": "structured",
+      "fields": [
+        {
+          "name": "product_name",
+          "label": "اسم المنتج",
+          "type": "text"
+        },
+        {
+          "name": "product_company",
+          "label": "شركة المنتج",
+          "type": "text"
+        },
+        {
+          "name": "product_price",
+          "label": "سعر المنتج",
+          "type": "text"
+        }
+      ]
     },
     {
       "id": 20,

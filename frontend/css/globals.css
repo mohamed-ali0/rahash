@@ -3559,3 +3559,134 @@ html[lang="en"] .section-actions {
         padding: 0.75rem;
     }
 }
+
+/* Client Summary Widget */
+.client-summary-container {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, #fff5f5, #ffe8e8);
+    border: 2px solid #CA9E3F;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(202, 158, 63, 0.1);
+}
+
+.client-summary-header h5 {
+    margin: 0 0 0.75rem 0;
+    color: #23407C;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.client-summary-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.summary-issues {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.summary-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.summary-item.price-issue {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border-left: 4px solid #f39c12;
+}
+
+.summary-item.expiration-issue {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    border-left: 4px solid #e74c3c;
+}
+
+.summary-item.complaint-issue {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    border-left: 4px solid #17a2b8;
+}
+
+.summary-item.suggested-products {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border-left: 4px solid #28a745;
+}
+
+.summary-no-issues {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #155724;
+}
+
+.summary-no-history {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.summary-icon {
+    font-size: 1.1rem;
+}
+
+.summary-text {
+    flex: 1;
+}
+
+.summary-actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+}
+
+.summary-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.summary-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments for client summary */
+@media (max-width: 768px) {
+    .client-summary-container {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+    }
+    
+    .summary-item {
+        padding: 0.375rem;
+        font-size: 0.85rem;
+    }
+    
+    .summary-no-issues {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+}

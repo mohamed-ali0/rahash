@@ -4,56 +4,130 @@
 let currentLanguage = 'ar';
 
 // Global scroll management system
+// Comprehensive Scroll Management System - Prevents all scroll freezing issues
 const ScrollManager = {
     isScrollDisabled: false,
-    originalOverflow: '',
+    disabledBy: null,
+    scrollPosition: 0,
+    originalStyles: {},
     
-    disableScroll: function() {
+    disableScroll: function(source = 'unknown') {
         if (!this.isScrollDisabled) {
-            this.originalOverflow = document.body.style.overflow;
+            // Store current scroll position
+            this.scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Store original styles
+            this.originalStyles = {
+                overflow: document.body.style.overflow,
+                overflowY: document.body.style.overflowY,
+                position: document.body.style.position,
+                top: document.body.style.top,
+                width: document.body.style.width
+            };
+            
+            // Disable scroll
             document.body.style.overflow = 'hidden';
             document.body.style.overflowY = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${this.scrollPosition}px`;
+            document.body.style.width = '100%';
+            
             this.isScrollDisabled = true;
-            console.log('Scroll disabled');
+            this.disabledBy = source;
+            console.log(`Scroll disabled by: ${source} at position: ${this.scrollPosition}`);
         }
     },
     
-    enableScroll: function() {
+    enableScroll: function(source = 'unknown') {
         if (this.isScrollDisabled) {
-            document.body.style.overflow = this.originalOverflow || '';
-            document.body.style.overflowY = '';
+            // Restore original styles
+            document.body.style.overflow = this.originalStyles.overflow || 'auto';
+            document.body.style.overflowY = this.originalStyles.overflowY || 'auto';
+            document.body.style.position = this.originalStyles.position || '';
+            document.body.style.top = this.originalStyles.top || '';
+            document.body.style.width = this.originalStyles.width || '';
+            
+            // Restore scroll position
+            window.scrollTo(0, this.scrollPosition);
+            
             this.isScrollDisabled = false;
-            console.log('Scroll enabled');
+            this.disabledBy = null;
+            this.scrollPosition = 0;
+            this.originalStyles = {};
+            console.log(`Scroll enabled by: ${source}`);
         }
     },
     
     forceEnableScroll: function() {
-        document.body.style.overflow = '';
-        document.body.style.overflowY = '';
+        // Force restore all scroll properties
+        document.body.style.overflow = 'auto';
+        document.body.style.overflowY = 'auto';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        
+        // Remove any stuck modals
+        const stuckModals = document.querySelectorAll('.modal-overlay, .expanded-modal, .fullscreen-image-modal, .sidebar-overlay');
+        stuckModals.forEach(modal => {
+            console.log('Removing stuck modal:', modal.className);
+            modal.remove();
+        });
+        
+        // Reset state
         this.isScrollDisabled = false;
-        console.log('Scroll force enabled');
+        this.disabledBy = null;
+        this.scrollPosition = 0;
+        this.originalStyles = {};
+        
+        console.log('Force scroll enabled - all modals cleared');
+    },
+    
+    isScrollCurrentlyDisabled: function() {
+        return this.isScrollDisabled;
+    },
+    
+    getDisabledBy: function() {
+        return this.disabledBy;
+    },
+    
+    // Emergency recovery function
+    emergencyRecovery: function() {
+        console.log('Emergency scroll recovery initiated');
+        this.forceEnableScroll();
+        
+        // Additional cleanup
+        document.querySelectorAll('[style*="overflow: hidden"]').forEach(el => {
+            if (el !== document.body) {
+                el.style.overflow = 'auto';
+            }
+        });
+        
+        // Remove any remaining overlays
+        document.querySelectorAll('.overlay, .backdrop').forEach(el => el.remove());
+        
+        console.log('Emergency recovery completed');
     }
 };
 
 // Global function to safely close modals and restore scrolling
-function closeModalAndRestoreScroll(modal) {
+function closeModalAndRestoreScroll(modal, source = 'closeModalAndRestoreScroll') {
     if (modal) {
         modal.remove();
-        ScrollManager.enableScroll();
+        ScrollManager.enableScroll(source);
     }
 }
 
 // Global function to safely open modals and disable scrolling
-function openModalAndDisableScroll(modal) {
+function openModalAndDisableScroll(modal, source = 'openModalAndDisableScroll') {
     if (modal) {
         document.body.appendChild(modal);
         modal.style.display = 'flex';
-        ScrollManager.disableScroll();
+        ScrollManager.disableScroll(source);
         
         // Add click handler to close modal
         modal.addEventListener('click', function(e) {
             if (e.target === modal || e.target.classList.contains('expanded-close') || e.target.classList.contains('modal-close')) {
-                closeModalAndRestoreScroll(modal);
+                closeModalAndRestoreScroll(modal, 'modal-click');
             }
         });
     }
@@ -61,10 +135,7 @@ function openModalAndDisableScroll(modal) {
 
 // Emergency function to restore scrolling if page gets frozen
 function emergencyRestoreScroll() {
-    ScrollManager.forceEnableScroll();
-    // Remove any stuck modals
-    const modals = document.querySelectorAll('.expanded-modal, .fullscreen-image-modal, .modal-overlay');
-    modals.forEach(modal => modal.remove());
+    ScrollManager.emergencyRecovery();
     console.log('Emergency scroll restore executed');
 }
 
@@ -80,6 +151,39 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
         emergencyRestoreScroll();
         alert('Scroll restored! If the page is still frozen, try refreshing.');
+    }
+});
+
+// Add periodic scroll health check
+setInterval(function() {
+    if (ScrollManager.isScrollCurrentlyDisabled()) {
+        const disabledBy = ScrollManager.getDisabledBy();
+        console.log(`Scroll currently disabled by: ${disabledBy}`);
+        
+        // Check if any modals are still present
+        const activeModals = document.querySelectorAll('.modal-overlay, .expanded-modal, .fullscreen-image-modal');
+        if (activeModals.length === 0) {
+            console.log('No active modals found but scroll still disabled - forcing enable');
+            ScrollManager.forceEnableScroll();
+        }
+    }
+}, 5000); // Check every 5 seconds
+
+// Add beforeunload event to ensure scroll is restored
+window.addEventListener('beforeunload', function() {
+    if (ScrollManager.isScrollCurrentlyDisabled()) {
+        ScrollManager.forceEnableScroll();
+    }
+});
+
+// Add visibility change event to restore scroll when tab becomes visible
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && ScrollManager.isScrollCurrentlyDisabled()) {
+        const activeModals = document.querySelectorAll('.modal-overlay, .expanded-modal, .fullscreen-image-modal');
+        if (activeModals.length === 0) {
+            console.log('Tab became visible with disabled scroll but no modals - forcing enable');
+            ScrollManager.forceEnableScroll();
+        }
     }
 });
 
@@ -2922,6 +3026,16 @@ const ReportManager = {
                                 <input type="date" name="visit_date" required>
                             </div>
                         </div>
+                        
+                        <!-- Client Last Report Summary -->
+                        <div id="clientSummaryContainer" class="client-summary-container" style="display: none;">
+                            <div class="client-summary-header">
+                                <h5>${currentLanguage === 'ar' ? 'ملخص آخر تقرير للعميل' : 'Client Last Report Summary'}</h5>
+                            </div>
+                            <div id="clientSummaryContent" class="client-summary-content">
+                                <!-- Summary content will be loaded here -->
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Visit Images Section -->
@@ -3243,6 +3357,15 @@ const ReportManager = {
                 searchInput.value = text;
                 hiddenInput.value = value;
                 dropdown.style.display = 'none';
+                
+                // Load client summary if a client is selected
+                if (value) {
+                    console.log('Client selected, loading summary for ID:', value);
+                    this.loadClientLastReportSummary(value);
+                } else {
+                    console.log('No client selected, hiding summary');
+                    this.hideClientSummary();
+                }
             }
         });
         
@@ -4073,6 +4196,25 @@ const ReportManager = {
                     </button>
                 </div>
             `;
+        } else if (question.type === 'structured') {
+            let fieldsHtml = '';
+            question.fields.forEach(field => {
+                fieldsHtml += `
+                    <div class="form-group">
+                        <label>${field.label}</label>
+                        <input type="text" id="predefined_${field.name}_${question.id}" class="form-control" placeholder="${field.label}">
+                    </div>
+                `;
+            });
+            answerHtml = `
+                <div class="form-group predefined-answer-group">
+                    <label>${question.question}</label>
+                    ${fieldsHtml}
+                    <button type="button" class="btn btn-primary btn-sm" onclick="ReportManager.addPredefinedAnswer(${question.id})">
+                        ${currentLanguage === 'ar' ? 'إضافة الإجابة' : 'Add Answer'}
+                    </button>
+                </div>
+            `;
         } else {
             answerHtml = `
                 <div class="form-group predefined-answer-group">
@@ -4116,6 +4258,22 @@ const ReportManager = {
             const month = monthNames[selectedDate.getMonth()];
             const year = selectedDate.getFullYear();
             answer = `${dayName} - ${day} ${month} ${year}`;
+        } else if (question.type === 'structured') {
+            // Collect all field values
+            let fieldAnswers = [];
+            question.fields.forEach(field => {
+                const fieldInput = document.getElementById(`predefined_${field.name}_${questionId}`);
+                if (fieldInput && fieldInput.value.trim()) {
+                    fieldAnswers.push(`${field.label}: ${fieldInput.value.trim()}`);
+                }
+            });
+            
+            if (fieldAnswers.length === 0) {
+                alert(currentLanguage === 'ar' ? 'يرجى ملء حقل واحد على الأقل' : 'Please fill at least one field');
+                return;
+            }
+            
+            answer = fieldAnswers.join(' | ');
         } else {
             const textArea = document.getElementById(`predefined_text_${questionId}`);
             if (!textArea || !textArea.value.trim()) {
@@ -4140,6 +4298,144 @@ const ReportManager = {
         
         // Refresh the predefined questions dropdown to disable the added question
         this.populatePredefinedQuestions();
+    },
+    
+    loadClientLastReportSummary: async function(clientId) {
+        console.log('loadClientLastReportSummary called with clientId:', clientId);
+        try {
+            const response = await fetch(`/api/clients/${clientId}/last-report-summary`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log('API response status:', response.status);
+            console.log('API response headers:', response.headers);
+            
+            if (response.ok) {
+                const summary = await response.json();
+                console.log('Summary data received:', summary);
+                this.displayClientSummary(summary);
+            } else {
+                const errorText = await response.text();
+                console.log('API response not ok, status:', response.status);
+                console.log('Error response:', errorText);
+                this.hideClientSummary();
+            }
+        } catch (error) {
+            console.error('Error loading client summary:', error);
+            this.hideClientSummary();
+        }
+    },
+    
+    displayClientSummary: function(summary) {
+        console.log('displayClientSummary called with:', summary);
+        const container = document.getElementById('clientSummaryContainer');
+        const content = document.getElementById('clientSummaryContent');
+        
+        console.log('Container found:', !!container);
+        console.log('Content found:', !!content);
+        
+        if (!container || !content) {
+            console.log('Missing container or content elements');
+            return;
+        }
+        
+        let summaryHtml = '';
+        
+        // Check if there are any issues to display
+        const hasIssues = summary.priceIssues || summary.expirationIssues || summary.complaints || summary.suggestedProducts;
+        
+        console.log('Summary has issues:', hasIssues);
+        console.log('Summary values:', summary);
+        
+        if (hasIssues) {
+            summaryHtml = '<div class="summary-issues">';
+            
+            if (summary.priceIssues) {
+                summaryHtml += `
+                    <div class="summary-item price-issue">
+                        <span class="summary-icon">⚠️</span>
+                        <span class="summary-text">${currentLanguage === 'ar' ? 'مشاكل في الأسعار' : 'Price Issues'}</span>
+                    </div>
+                `;
+            }
+            
+            if (summary.expirationIssues) {
+                summaryHtml += `
+                    <div class="summary-item expiration-issue">
+                        <span class="summary-icon">⏰</span>
+                        <span class="summary-text">${currentLanguage === 'ar' ? 'مشاكل في انتهاء الصلاحية' : 'Expiration Issues'}</span>
+                    </div>
+                `;
+            }
+            
+            if (summary.complaints) {
+                summaryHtml += `
+                    <div class="summary-item complaint-issue">
+                        <span class="summary-icon">😞</span>
+                        <span class="summary-text">${currentLanguage === 'ar' ? 'شكاوى (منتجات أو مندوب)' : 'Complaints (Products or Salesman)'}</span>
+                    </div>
+                `;
+            }
+            
+            if (summary.suggestedProducts) {
+                summaryHtml += `
+                    <div class="summary-item suggested-products">
+                        <span class="summary-icon">💡</span>
+                        <span class="summary-text">${currentLanguage === 'ar' ? 'منتجات مقترحة' : 'Suggested Products'}</span>
+                    </div>
+                `;
+            }
+            
+            summaryHtml += '</div>';
+            
+            // Add display button if there's a last report
+            if (summary.lastReportId) {
+                summaryHtml += `
+                    <div class="summary-actions">
+                        <button class="btn btn-sm btn-outline-primary" onclick="ReportManager.displayLastReport(${summary.lastReportId})">
+                            <span class="summary-icon">👁️</span>
+                            ${currentLanguage === 'ar' ? 'عرض آخر تقرير' : 'Display Last Report'}
+                        </button>
+                    </div>
+                `;
+            }
+        } else {
+            // Check if this is a client with no previous reports vs a client with no issues
+            if (summary.hasPreviousReports === false) {
+                summaryHtml = `
+                    <div class="summary-no-history">
+                        <span class="summary-icon">ℹ️</span>
+                        <span class="summary-text">${currentLanguage === 'ar' ? 'لا توجد تقارير سابقة لهذا العميل' : 'No previous reports for this client'}</span>
+                    </div>
+                `;
+            } else {
+                summaryHtml = `
+                    <div class="summary-no-issues">
+                        <span class="summary-icon">✅</span>
+                        <span class="summary-text">${currentLanguage === 'ar' ? 'لا توجد مشاكل في آخر تقرير' : 'No issues in last report'}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        content.innerHTML = summaryHtml;
+        container.style.display = 'block';
+        console.log('Summary displayed, container visible:', container.style.display);
+    },
+    
+    hideClientSummary: function() {
+        const container = document.getElementById('clientSummaryContainer');
+        if (container) {
+            container.style.display = 'none';
+        }
+    },
+    
+    displayLastReport: function(reportId) {
+        // Open the report display page in a new tab
+        const displayUrl = `/api/visit-reports/${reportId}/html?token=${localStorage.getItem('authToken')}`;
+        window.open(displayUrl, '_blank');
     },
     
     isPredefinedNoteAlreadyAdded: function(question) {
@@ -4167,7 +4463,7 @@ const ReportManager = {
         noteGroup.className = 'form-group note-group predefined-note';
         noteGroup.innerHTML = `
             <label>${currentLanguage === 'ar' ? 'ملاحظة' : 'Note'}</label>
-            <textarea name="notes[]" rows="3" readonly>* ${question}: <u>${answer}</u></textarea>
+            <textarea name="notes[]" rows="3" readonly>* ${question}: <span style="color: #B88A2A; font-weight: bold;">${answer}</span></textarea>
             <button type="button" class="remove-note-btn" onclick="ReportManager.removeNote(this)">
                 ${currentLanguage === 'ar' ? 'حذف' : 'Remove'}
             </button>
