@@ -907,7 +907,7 @@ def get_dashboard_stats(current_user):
 @app.route('/api/visit-reports/list', methods=['GET'])
 @token_required
 def get_visit_reports_list(current_user):
-    """Get lightweight report list with metadata only (no images, no full product/note data) - FAST"""
+    """Get report list with full data but WITHOUT images - Load images on demand"""
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
         
@@ -925,7 +925,44 @@ def get_visit_reports_list(current_user):
         reports_data = []
         for report in reports:
             try:
-                # Only include metadata - NO images, NO full product/note data
+                # Get all notes
+                notes = []
+                for note in report.notes:
+                    notes.append({
+                        'id': note.id,
+                        'note_text': note.note_text,
+                        'created_at': note.created_at.isoformat()
+                    })
+                
+                # Get products information
+                products = []
+                for rp in report.products:
+                    try:
+                        product_data = {
+                            'id': rp.id,
+                            'product_id': rp.product_id,
+                            'product_name': rp.product.name if rp.product else 'Unknown Product',
+                            'displayed_price': float(rp.displayed_price) if rp.displayed_price else None,
+                            'nearly_expired': rp.expired_or_nearly_expired if hasattr(rp, 'expired_or_nearly_expired') else False,
+                            'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None,
+                            'units_count': rp.units_count if hasattr(rp, 'units_count') else None
+                        }
+                        
+                        # Add product pricing information for comparison
+                        if rp.product:
+                            product_data.update({
+                                'taxed_price_client': float(rp.product.taxed_price_client) if rp.product.taxed_price_client else None,
+                                'untaxed_price_client': float(rp.product.untaxed_price_client) if rp.product.untaxed_price_client else None,
+                                'taxed_price_store': float(rp.product.taxed_price_store) if rp.product.taxed_price_store else None,
+                                'untaxed_price_store': float(rp.product.untaxed_price_store) if rp.product.untaxed_price_store else None
+                            })
+                        
+                        products.append(product_data)
+                    except Exception as prod_e:
+                        print(f"Error processing product {rp.id} in report {report.id}: {prod_e}")
+                        continue
+                
+                # Include full data but NO IMAGES (images will be loaded separately)
                 reports_data.append({
                     'id': report.id,
                     'client_id': report.client_id,
@@ -934,12 +971,12 @@ def get_visit_reports_list(current_user):
                     'username': report.user.username if report.user else 'Unknown User',
                     'visit_date': report.visit_date.isoformat(),
                     'created_at': report.created_at.isoformat(),
-                    'image_count': len(report.images) if report.images else 0,
-                    'note_count': len(report.notes) if report.notes else 0,
-                    'product_count': len(report.products) if report.products else 0,
+                    'notes': notes,
+                    'products': products,
                     'can_edit': current_user.role == UserRole.SUPER_ADMIN or report.user_id == current_user.id,
                     'is_active': report.is_active,
-                    'has_thumbnail': len(report.images) > 0 if report.images else False
+                    'image_count': len(report.images) if report.images else 0,
+                    # NO 'images' field - will be loaded separately when needed
                 })
             except Exception as report_e:
                 print(f"Error processing report {report.id}: {report_e}")
@@ -1144,6 +1181,36 @@ def create_visit_report(current_user):
         db.session.rollback()
         print(f"Error creating visit report: {e}")
         return jsonify({'message': 'Failed to create visit report', 'error': str(e)}), 500
+
+@app.route('/api/visit-reports/<int:report_id>/images', methods=['GET'])
+@token_required
+def get_visit_report_images(current_user, report_id):
+    """Get only images for a specific visit report - for lazy loading"""
+    try:
+        report = VisitReport.query.get(report_id)
+        if not report:
+            return jsonify({'message': 'Visit report not found'}), 404
+        
+        # Check permission - only super admin or report creator can view
+        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Get all images
+        images = []
+        for img in report.images:
+            images.append({
+                'id': img.id,
+                'filename': img.filename,
+                'data': base64.b64encode(img.image_data).decode('utf-8'),
+                'is_suggested_products': img.is_suggested_products if hasattr(img, 'is_suggested_products') else False,
+                'created_at': img.created_at.isoformat()
+            })
+        
+        return jsonify({'images': images}), 200
+        
+    except Exception as e:
+        print(f"Error fetching images for report {report_id}: {e}")
+        return jsonify({'message': 'Failed to fetch report images', 'error': str(e)}), 500
 
 @app.route('/api/visit-reports/<int:report_id>', methods=['GET'])
 @token_required

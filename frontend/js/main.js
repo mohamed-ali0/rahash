@@ -3236,54 +3236,8 @@ const ReportManager = {
                 </div>
             `;
         } else {
-            // Display cards immediately (NO images - only metadata)
-            reportsList.innerHTML = reports.map(report => {
-                const visitDate = ReportManager.formatReportDate(report.visit_date);
-                
-                const isInactive = report.is_active === false;
-                const cardClass = `report-card ${isInactive ? 'inactive' : ''}`;
-                const cardStyle = isInactive ? 'cursor: default; opacity: 0.6;' : 'cursor: pointer;';
-                
-                return `
-                    <div class="${cardClass}" ${!isInactive ? `onclick="ReportManager.viewReport(${report.id})"` : ''} style="${cardStyle}">
-                        <div class="report-info">
-                            <h3 class="client-name">${report.client_name || (currentLanguage === 'ar' ? 'عميل غير معروف' : 'Unknown Client')}</h3>
-                            <div class="visit-date">${visitDate}</div>
-                            <div class="report-meta">
-                                <span>📷 ${report.image_count} ${currentLanguage === 'ar' ? 'صورة' : 'images'}</span> • 
-                                <span>📦 ${report.product_count} ${currentLanguage === 'ar' ? 'منتج' : 'products'}</span> • 
-                                <span>📝 ${report.note_count} ${currentLanguage === 'ar' ? 'ملاحظة' : 'notes'}</span>
-                            </div>
-                            ${isInactive ? `<div class="inactive-badge">${currentLanguage === 'ar' ? 'معطل' : 'Inactive'}</div>` : ''}
-                        </div>
-                        <div class="report-actions" onclick="event.stopPropagation()">
-                            ${!isInactive ? `
-                                <button class="btn-icon-stylish view-btn" onclick="ReportManager.viewReport(${report.id})" title="${currentLanguage === 'ar' ? 'عرض التقرير' : 'View Report'}">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                                    </svg>
-                                </button>
-                                <button class="btn-icon-stylish print-btn" onclick="ReportManager.printReport(${report.id})" title="${currentLanguage === 'ar' ? 'طباعة' : 'Print'}">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
-                                    </svg>
-                                </button>
-                                <button class="btn-icon-stylish delete-btn" onclick="ReportManager.deleteReport(${report.id})" title="${currentLanguage === 'ar' ? 'إلغاء تفعيل' : 'Deactivate'}">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                    </svg>
-                                </button>
-                            ` : `
-                                <button class="btn-icon-stylish reactivate-btn" onclick="ReportManager.reactivateReport(${report.id})" title="${currentLanguage === 'ar' ? 'إعادة تفعيل' : 'Reactivate'}">
-                                    <svg viewBox="0 0 24 24" width="16" height="16">
-                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                    </svg>
-                                </button>
-                            `}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            // Use old displayReports function for consistent card design
+            this.displayReports(reports);
         }
     },
     
@@ -3927,7 +3881,7 @@ const ReportManager = {
         }
     },
     
-    viewReport: function(reportId) {
+    viewReport: async function(reportId) {
         const report = this.currentReports.find(r => r.id === reportId);
         if (!report) return;
         
@@ -4016,21 +3970,16 @@ const ReportManager = {
                         </div>
                     ` : ''}
                     
-                    ${report.images && report.images.length > 0 ? `
-                        <div class="detail-section">
-                            <h3>${currentLanguage === 'ar' ? 'صور الزيارة' : 'Visit Images'}</h3>
+                    ${report.image_count > 0 ? `
+                        <div class="detail-section" id="images-section-${report.id}">
+                            <h3>${currentLanguage === 'ar' ? 'صور الزيارة' : 'Visit Images'} (${report.image_count})</h3>
                             <div class="image-gallery">
-                                <div class="gallery-grid">
-                                    ${report.images.map((img, index) => `
-                                        <div class="gallery-item" onclick="ReportManager.viewReportImages(${report.id}, ${index})">
-                                            <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}" title="${img.filename}">
-                                            <div class="gallery-overlay">
-                                                <span class="gallery-filename">${img.filename}</span>
-                                                ${img.is_suggested_products ? `<span class="suggested-products-badge">${currentLanguage === 'ar' ? 'منتجات مقترحة' : 'Suggested Products'}</span>` : ''}
-                                            </div>
-                                        </div>
-                                    `).join('')}
+                                <div class="modern-spinner">
+                                    <div class="spinner-ring"></div>
+                                    <div class="spinner-ring"></div>
+                                    <div class="spinner-ring"></div>
                                 </div>
+                                <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل الصور...' : 'Loading images...'}</p>
                             </div>
                         </div>
                     ` : ''}
@@ -4055,6 +4004,55 @@ const ReportManager = {
         document.body.appendChild(modal);
         modal.style.display = 'flex';
         ScrollManager.disableScroll();
+        
+        // Lazy load images after modal is displayed
+        if (report.image_count > 0) {
+            this.loadReportImages(reportId);
+        }
+    },
+    
+    loadReportImages: async function(reportId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/visit-reports/${reportId}/images`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const imagesSection = document.getElementById(`images-section-${reportId}`);
+                
+                if (imagesSection && data.images) {
+                    // Replace loading spinner with actual images
+                    const galleryDiv = imagesSection.querySelector('.image-gallery');
+                    galleryDiv.innerHTML = `
+                        <div class="gallery-grid">
+                            ${data.images.map((img, index) => `
+                                <div class="gallery-item" onclick="ReportManager.viewReportImages(${reportId}, ${index})">
+                                    <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}" title="${img.filename}">
+                                    <div class="gallery-overlay">
+                                        <span class="gallery-filename">${img.filename}</span>
+                                        ${img.is_suggested_products ? `<span class="suggested-products-badge">${currentLanguage === 'ar' ? 'منتجات مقترحة' : 'Suggested Products'}</span>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    // Store images in the report object for viewing
+                    const report = this.currentReports.find(r => r.id === reportId);
+                    if (report) {
+                        report.images = data.images;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading report images:', error);
+            const imagesSection = document.getElementById(`images-section-${reportId}`);
+            if (imagesSection) {
+                const galleryDiv = imagesSection.querySelector('.image-gallery');
+                galleryDiv.innerHTML = `<p class="error-text">${currentLanguage === 'ar' ? 'فشل تحميل الصور' : 'Failed to load images'}</p>`;
+            }
+        }
     },
     
     viewReportImages: function(reportId, startIndex = 0) {
