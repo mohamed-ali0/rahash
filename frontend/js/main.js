@@ -3263,7 +3263,8 @@ const ReportManager = {
                     <div class="${cardClass}" ${!isInactive ? `onclick="ReportManager.viewReport(${report.id})"` : ''} style="${cardStyle}">
                         <div class="report-info">
                             <h3 class="client-name">${report.client_name || (currentLanguage === 'ar' ? 'عميل غير معروف' : 'Unknown Client')}</h3>
-                            <div class="visit-date">${visitDate}</div>
+                            <div class="visit-date">${visitDate.line1}</div>
+                            <div class="visit-date-islamic">${visitDate.line2}</div>
                             ${isInactive ? `<div class="inactive-badge">${currentLanguage === 'ar' ? 'معطل' : 'Inactive'}</div>` : ''}
                             <div class="report-actions" onclick="event.stopPropagation()">
                                 ${!isInactive ? `
@@ -3292,7 +3293,7 @@ const ReportManager = {
         }
     },
 
-    // Format date as: Day - Gregorian - Islamic (Umm al-Qura)
+    // Format date as: Day - Gregorian (line 1) and Islamic (line 2)
     formatReportDate: function(dateStr) {
         try {
             const parts = String(dateStr).split('/').map(p => parseInt(p, 10));
@@ -3302,9 +3303,13 @@ const ReportManager = {
             const dayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(d);
             const greg = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
             const isl = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
-            return `${dayName} - ${greg} - ${isl}`;
+            return {
+                line1: `${dayName} - ${greg}`,
+                line2: isl,
+                full: `${dayName} - ${greg} - ${isl}` // For expanded view
+            };
         } catch (e) {
-            return dateStr;
+            return { line1: dateStr, line2: '', full: dateStr };
         }
     },
     
@@ -3876,23 +3881,25 @@ const ReportManager = {
         }
     },
     
-    viewReport: async function(reportId) {
-        const report = this.currentReports.find(r => r.id === reportId);
-        if (!report) return;
-        
-        // Create detailed view modal
-        const modal = document.createElement('div');
-        modal.className = 'expanded-modal';
-        modal.innerHTML = `
-            <div class="expanded-content">
-                <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
-                
-                <div class="expanded-header">
-                    <div class="expanded-title">
-                        <h2>${report.client_name}</h2>
-                        <p class="visit-date">${ReportManager.formatReportDate(report.visit_date)}</p>
+        viewReport: async function(reportId) {
+            const report = this.currentReports.find(r => r.id === reportId);
+            if (!report) return;
+            
+            const visitDate = ReportManager.formatReportDate(report.visit_date);
+            
+            // Create detailed view modal
+            const modal = document.createElement('div');
+            modal.className = 'expanded-modal';
+            modal.innerHTML = `
+                <div class="expanded-content">
+                    <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
+                    
+                    <div class="expanded-header">
+                        <div class="expanded-title">
+                            <h2>${report.client_name}</h2>
+                            <p class="visit-date">${visitDate.full}</p>
+                        </div>
                     </div>
-                </div>
                 
                 <div class="expanded-details">
                     ${report.products && report.products.length > 0 ? `

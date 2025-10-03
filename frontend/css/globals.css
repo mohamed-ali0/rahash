@@ -1638,6 +1638,13 @@ section h2 .status-count {
     font-size: 0.9rem;
 }
 
+.report-card .visit-date-islamic {
+    color: #888;
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
+    font-style: italic;
+}
+
 .report-card .report-actions {
     display: flex;
     gap: 0.5rem;

@@ -1480,13 +1480,22 @@ def get_visit_report_html(report_id):
         with open('templates/visit_report.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
         
+        # Load price tolerance from settings
+        try:
+            with open('sys_settings.json', 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+                price_tolerance = float(settings.get('price_tolerance', {}).get('value', 1.0))
+        except:
+            price_tolerance = 1.0
+        
         # Prepare report data
         report_data = {
             'client_name': report.client.name if report.client else 'غير محدد',
             'visit_date': report.visit_date.strftime('%Y/%m/%d'),
             'notes': '\\n'.join([note.note_text for note in report.notes]) if report.notes else '',
             'images': [],
-            'products': []
+            'products': [],
+            'price_tolerance': price_tolerance
         }
         
         # Add ALL images (both regular visit images and suggested products images)
@@ -1499,10 +1508,15 @@ def get_visit_report_html(report_id):
         
         # Add products
         for rp in report.products:
+            our_price_value = rp.product.taxed_price_store if rp.product and rp.product.taxed_price_store else None
+            displayed_price_value = rp.displayed_price if rp.displayed_price else None
+            
             product_data = {
                 'name': rp.product.name if rp.product else 'منتج غير محدد',
-                'our_price': f"{rp.product.taxed_price_store:.2f} ريال" if rp.product and rp.product.taxed_price_store else 'غير محدد',
-                'displayed_price': f"{rp.displayed_price:.2f} ريال",
+                'our_price': f"{our_price_value:.2f} ريال" if our_price_value else 'غير محدد',
+                'our_price_raw': our_price_value,  # Raw numeric value for comparison
+                'displayed_price': f"{displayed_price_value:.2f} ريال" if displayed_price_value else 'غير محدد',
+                'displayed_price_raw': displayed_price_value,  # Raw numeric value for comparison
                 'nearly_expired': rp.expired_or_nearly_expired,
                 'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else '',
                 'units_count': rp.units_count

@@ -507,11 +507,25 @@
                 
                 data.products.forEach((product, index) => {
                     const row = tbody.insertRow();
+                    
+                    // Check for price mismatch using price tolerance
+                    const ourPrice = product.our_price_raw;
+                    const displayedPrice = product.displayed_price_raw;
+                    const tolerance = parseFloat(data.price_tolerance) || 1.0;
+                    
+                    let hasPriceMismatch = false;
+                    if (ourPrice !== null && ourPrice !== undefined && 
+                        displayedPrice !== null && displayedPrice !== undefined) {
+                        hasPriceMismatch = Math.abs(ourPrice - displayedPrice) > tolerance;
+                    }
+                    
+                    const priceStyle = hasPriceMismatch ? 'style="color: #8B0000; font-weight: bold;"' : '';
+                    
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${product.name || ''}</td>
-                        <td>${product.our_price || ''}</td>
-                        <td>${product.displayed_price || ''}</td>
+                        <td ${priceStyle}>${product.our_price || ''}</td>
+                        <td ${priceStyle}>${product.displayed_price || ''}</td>
                         <td>${product.expiry_date || ''}</td>
                         <td>${product.units_count || ''}</td>
                     `;
