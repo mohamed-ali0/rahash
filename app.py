@@ -1508,14 +1508,14 @@ def get_visit_report_html(report_id):
         
         # Add products
         for rp in report.products:
-            our_price_value = rp.product.taxed_price_store if rp.product and rp.product.taxed_price_store else None
-            displayed_price_value = rp.displayed_price if rp.displayed_price else None
+            our_price_value = float(rp.product.taxed_price_store) if rp.product and rp.product.taxed_price_store else None
+            displayed_price_value = float(rp.displayed_price) if rp.displayed_price else None
             
             product_data = {
                 'name': rp.product.name if rp.product else 'منتج غير محدد',
-                'our_price': f"{our_price_value:.2f} ريال" if our_price_value else 'غير محدد',
+                'our_price': f"{our_price_value:.2f} ريال" if our_price_value is not None else 'غير محدد',
                 'our_price_raw': our_price_value,  # Raw numeric value for comparison
-                'displayed_price': f"{displayed_price_value:.2f} ريال" if displayed_price_value else 'غير محدد',
+                'displayed_price': f"{displayed_price_value:.2f} ريال" if displayed_price_value is not None else 'غير محدد',
                 'displayed_price_raw': displayed_price_value,  # Raw numeric value for comparison
                 'nearly_expired': rp.expired_or_nearly_expired,
                 'expiry_date': rp.expiry_date.strftime('%Y/%m/%d') if rp.expiry_date else '',
