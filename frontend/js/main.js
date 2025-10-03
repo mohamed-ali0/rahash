@@ -3172,8 +3172,12 @@ const ReportManager = {
     
     loadReports: async function(statusFilter = 'active') {
         try {
-            // Determine API parameter based on status filter
-            let apiUrl = `${API_BASE_URL}/visit-reports`;
+            // Show loading state immediately
+            const reportsList = document.getElementById('reportsList');
+            reportsList.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading reports...</p></div>';
+            
+            // Use lightweight list endpoint for FAST loading (metadata only, no images)
+            let apiUrl = `${API_BASE_URL}/visit-reports/list`;
             if (statusFilter === 'all' || statusFilter === 'inactive') {
                 apiUrl += '?show_all=true';
             }
@@ -3194,19 +3198,87 @@ const ReportManager = {
                 
                 this.currentReports = reports;
                 this.currentStatusFilter = statusFilter;
-                this.displayReports(reports);
+                
+                // Display cards immediately (without images)
+                this.displayReportsLazy(reports);
                 
                 // Update status indicator
                 this.updateStatusIndicator('reports', statusFilter, reports.length);
             } else {
                 console.error('Failed to load reports');
-                const reportsList = document.getElementById('reportsList');
                 reportsList.innerHTML = '<p class="no-data">Failed to load visit reports</p>';
             }
         } catch (error) {
             console.error('Error loading reports:', error);
             const reportsList = document.getElementById('reportsList');
             reportsList.innerHTML = '<p class="no-data">Error loading visit reports</p>';
+        }
+    },
+    
+    displayReportsLazy: function(reports) {
+        // Display report cards immediately WITHOUT images (FAST rendering)
+        const reportsList = document.getElementById('reportsList');
+        if (reports.length === 0) {
+            reportsList.innerHTML = `
+                <div class="empty-state">
+                    <h3>${currentLanguage === 'ar' ? 'لا توجد تقارير' : 'No Reports'}</h3>
+                    <p>${currentLanguage === 'ar' ? 'ابدأ بإضافة تقرير زيارة جديد' : 'Start by adding a new visit report'}</p>
+                </div>
+            `;
+        } else {
+            // Display cards immediately (images will load on demand)
+            reportsList.innerHTML = reports.map(report => {
+                const visitDate = ReportManager.formatReportDate(report.visit_date);
+                
+                const isInactive = report.is_active === false;
+                const cardClass = `report-card ${isInactive ? 'inactive' : ''}`;
+                const cardStyle = isInactive ? 'cursor: default; opacity: 0.6;' : 'cursor: pointer;';
+                
+                // Show image placeholder with count
+                const imageIndicator = report.has_thumbnail 
+                    ? `<div class="image-placeholder"><span class="image-count">${report.image_count} 📷</span></div>`
+                    : '<div class="image-placeholder">📷</div>';
+                
+                return `
+                    <div class="${cardClass}" ${!isInactive ? `onclick="ReportManager.viewReport(${report.id})"` : ''} style="${cardStyle}">
+                        ${imageIndicator}
+                        <div class="report-info">
+                            <h3 class="client-name">${report.client_name || (currentLanguage === 'ar' ? 'عميل غير معروف' : 'Unknown Client')}</h3>
+                            <div class="visit-date">${visitDate}</div>
+                            <div class="report-meta">
+                                <span>${report.product_count} ${currentLanguage === 'ar' ? 'منتج' : 'products'}</span> • 
+                                <span>${report.note_count} ${currentLanguage === 'ar' ? 'ملاحظة' : 'notes'}</span>
+                            </div>
+                            ${isInactive ? `<div class="inactive-badge">${currentLanguage === 'ar' ? 'معطل' : 'Inactive'}</div>` : ''}
+                        </div>
+                        <div class="report-actions" onclick="event.stopPropagation()">
+                            ${!isInactive ? `
+                                <button class="btn-icon-stylish view-btn" onclick="ReportManager.viewReport(${report.id})" title="${currentLanguage === 'ar' ? 'عرض التقرير' : 'View Report'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn-icon-stylish print-btn" onclick="ReportManager.printReport(${report.id})" title="${currentLanguage === 'ar' ? 'طباعة' : 'Print'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn-icon-stylish delete-btn" onclick="ReportManager.deleteReport(${report.id})" title="${currentLanguage === 'ar' ? 'إلغاء تفعيل' : 'Deactivate'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                </button>
+                            ` : `
+                                <button class="btn-icon-stylish reactivate-btn" onclick="ReportManager.reactivateReport(${report.id})" title="${currentLanguage === 'ar' ? 'إعادة تفعيل' : 'Reactivate'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                    </svg>
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
     },
     
@@ -4394,7 +4466,7 @@ const ReportManager = {
             if (summary.lastReportId) {
                 summaryHtml += `
                     <div class="summary-actions">
-                        <button class="btn btn-sm btn-outline-primary" onclick="ReportManager.displayLastReport(${summary.lastReportId})">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="ReportManager.displayLastReport(${summary.lastReportId}, event); return false;">
                             <span class="summary-icon">👁️</span>
                             ${currentLanguage === 'ar' ? 'عرض آخر تقرير' : 'Display Last Report'}
                         </button>
@@ -4432,10 +4504,18 @@ const ReportManager = {
         }
     },
     
-    displayLastReport: function(reportId) {
+    displayLastReport: function(reportId, event) {
+        // Prevent any form submission or default behavior
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
         // Open the report display page in a new tab
         const displayUrl = `/api/visit-reports/${reportId}/html?token=${localStorage.getItem('authToken')}`;
         window.open(displayUrl, '_blank');
+        
+        return false; // Extra safety to prevent form submission
     },
     
     isPredefinedNoteAlreadyAdded: function(question) {

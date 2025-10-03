@@ -904,10 +904,59 @@ def get_dashboard_stats(current_user):
         return jsonify({'message': 'Failed to fetch dashboard statistics', 'error': str(e)}), 500
 
 # Report Export Routes
+@app.route('/api/visit-reports/list', methods=['GET'])
+@token_required
+def get_visit_reports_list(current_user):
+    """Get lightweight report list with metadata only (no images, no full product/note data) - FAST"""
+    try:
+        show_all = request.args.get('show_all', 'false').lower() == 'true'
+        
+        if current_user.role == UserRole.SUPER_ADMIN:
+            if show_all:
+                reports = VisitReport.query.order_by(VisitReport.created_at.desc()).all()
+            else:
+                reports = VisitReport.query.filter_by(is_active=True).order_by(VisitReport.created_at.desc()).all()
+        else:
+            if show_all:
+                reports = VisitReport.query.filter_by(user_id=current_user.id).order_by(VisitReport.created_at.desc()).all()
+            else:
+                reports = VisitReport.query.filter_by(user_id=current_user.id, is_active=True).order_by(VisitReport.created_at.desc()).all()
+        
+        reports_data = []
+        for report in reports:
+            try:
+                # Only include metadata - NO images, NO full product/note data
+                reports_data.append({
+                    'id': report.id,
+                    'client_id': report.client_id,
+                    'client_name': report.client.name if report.client else 'Unknown Client',
+                    'user_id': report.user_id,
+                    'username': report.user.username if report.user else 'Unknown User',
+                    'visit_date': report.visit_date.isoformat(),
+                    'created_at': report.created_at.isoformat(),
+                    'image_count': len(report.images) if report.images else 0,
+                    'note_count': len(report.notes) if report.notes else 0,
+                    'product_count': len(report.products) if report.products else 0,
+                    'can_edit': current_user.role == UserRole.SUPER_ADMIN or report.user_id == current_user.id,
+                    'is_active': report.is_active,
+                    'has_thumbnail': len(report.images) > 0 if report.images else False
+                })
+            except Exception as report_e:
+                print(f"Error processing report {report.id}: {report_e}")
+                continue
+        
+        return jsonify(reports_data), 200
+        
+    except Exception as e:
+        print(f"Error in get_visit_reports_list: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Failed to fetch visit reports list', 'error': str(e)}), 500
+
 @app.route('/api/visit-reports', methods=['GET'])
 @token_required
 def get_visit_reports(current_user):
-    """Get all active visit reports - users only see their own reports, super admin sees all"""
+    """Get all active visit reports with FULL data - SLOW (use /api/visit-reports/list for fast loading)"""
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
         
