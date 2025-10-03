@@ -3172,9 +3172,19 @@ const ReportManager = {
     
     loadReports: async function(statusFilter = 'active') {
         try {
-            // Show loading state immediately
+            // Show loading state immediately (Arabic/English)
             const reportsList = document.getElementById('reportsList');
-            reportsList.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading reports...</p></div>';
+            const loadingText = currentLanguage === 'ar' ? 'جاري تحميل التقارير...' : 'Loading reports...';
+            reportsList.innerHTML = `
+                <div class="loading-state">
+                    <div class="modern-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="loading-text">${loadingText}</p>
+                </div>
+            `;
             
             // Use lightweight list endpoint for FAST loading (metadata only, no images)
             let apiUrl = `${API_BASE_URL}/visit-reports/list`;
@@ -3226,7 +3236,7 @@ const ReportManager = {
                 </div>
             `;
         } else {
-            // Display cards immediately (images will load on demand)
+            // Display cards immediately (NO images - only metadata)
             reportsList.innerHTML = reports.map(report => {
                 const visitDate = ReportManager.formatReportDate(report.visit_date);
                 
@@ -3234,20 +3244,15 @@ const ReportManager = {
                 const cardClass = `report-card ${isInactive ? 'inactive' : ''}`;
                 const cardStyle = isInactive ? 'cursor: default; opacity: 0.6;' : 'cursor: pointer;';
                 
-                // Show image placeholder with count
-                const imageIndicator = report.has_thumbnail 
-                    ? `<div class="image-placeholder"><span class="image-count">${report.image_count} 📷</span></div>`
-                    : '<div class="image-placeholder">📷</div>';
-                
                 return `
                     <div class="${cardClass}" ${!isInactive ? `onclick="ReportManager.viewReport(${report.id})"` : ''} style="${cardStyle}">
-                        ${imageIndicator}
                         <div class="report-info">
                             <h3 class="client-name">${report.client_name || (currentLanguage === 'ar' ? 'عميل غير معروف' : 'Unknown Client')}</h3>
                             <div class="visit-date">${visitDate}</div>
                             <div class="report-meta">
-                                <span>${report.product_count} ${currentLanguage === 'ar' ? 'منتج' : 'products'}</span> • 
-                                <span>${report.note_count} ${currentLanguage === 'ar' ? 'ملاحظة' : 'notes'}</span>
+                                <span>📷 ${report.image_count} ${currentLanguage === 'ar' ? 'صورة' : 'images'}</span> • 
+                                <span>📦 ${report.product_count} ${currentLanguage === 'ar' ? 'منتج' : 'products'}</span> • 
+                                <span>📝 ${report.note_count} ${currentLanguage === 'ar' ? 'ملاحظة' : 'notes'}</span>
                             </div>
                             ${isInactive ? `<div class="inactive-badge">${currentLanguage === 'ar' ? 'معطل' : 'Inactive'}</div>` : ''}
                         </div>
