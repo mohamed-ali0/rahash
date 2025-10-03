@@ -59,15 +59,22 @@ Thumbs.db
 .env.production.local
 
 # Flask
-instance/
 .flaskenv
 
-# Database files - allow main DB but ignore backups
-instance/business_management_backup_*.db
+# Database files - Strategy: Track the main database
+# The main database (instance/business_management.db) will be pushed to server
+# Only backup files are ignored
+
+# Ignore backup database files
+instance/*_backup_*.db
+instance/*.bak
+
+# Ignore other database formats (not used by this project)
 *.sqlite
 *.sqlite3
-# Allow main database to be pushed
-!instance/business_management.db
+
+# IMPORTANT: instance/business_management.db is NOT ignored
+# It will be tracked and pushed to update the server database
 
 # Migration cache (keep migration files but not cache)
 migrations/versions/__pycache__/

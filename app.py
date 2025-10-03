@@ -857,6 +857,52 @@ def delete_product(current_user, product_id):
         db.session.rollback()
         return jsonify({'message': 'Failed to delete product', 'error': str(e)}), 500
 
+# Dashboard Stats Route
+@app.route('/api/dashboard/stats', methods=['GET'])
+@token_required
+def get_dashboard_stats(current_user):
+    """Get dashboard statistics - optimized for fast loading"""
+    try:
+        # Count active clients (fast count query)
+        active_clients_count = Client.query.filter_by(is_active=True).count()
+        
+        # Count total products (fast count query)
+        total_products_count = Product.query.count()
+        
+        # Count reports this month (optimized query)
+        from datetime import datetime
+        from sqlalchemy import extract
+        
+        current_date = datetime.now()
+        current_month = current_date.month
+        current_year = current_date.year
+        
+        if current_user.role == UserRole.SUPER_ADMIN:
+            # Super admin sees all reports
+            monthly_reports_count = VisitReport.query.filter(
+                VisitReport.is_active == True,
+                extract('month', VisitReport.visit_date) == current_month,
+                extract('year', VisitReport.visit_date) == current_year
+            ).count()
+        else:
+            # Regular users see only their reports
+            monthly_reports_count = VisitReport.query.filter(
+                VisitReport.user_id == current_user.id,
+                VisitReport.is_active == True,
+                extract('month', VisitReport.visit_date) == current_month,
+                extract('year', VisitReport.visit_date) == current_year
+            ).count()
+        
+        return jsonify({
+            'total_clients': active_clients_count,
+            'total_products': total_products_count,
+            'monthly_reports': monthly_reports_count
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in get_dashboard_stats: {e}")
+        return jsonify({'message': 'Failed to fetch dashboard statistics', 'error': str(e)}), 500
+
 # Report Export Routes
 @app.route('/api/visit-reports', methods=['GET'])
 @token_required
@@ -878,74 +924,88 @@ def get_visit_reports(current_user):
         
         reports_data = []
         for report in reports:
-            # Get first image for display
-            first_image = None
-            if report.images:
-                first_image = base64.b64encode(report.images[0].image_data).decode('utf-8')
-            
-            # Get all images
-            images = []
-            for img in report.images:
-                images.append({
-                    'id': img.id,
-                    'filename': img.filename,
-                    'data': base64.b64encode(img.image_data).decode('utf-8'),
-                    'is_suggested_products': img.is_suggested_products,
-                    'created_at': img.created_at.isoformat()
-                })
-            
-            # Get all notes
-            notes = []
-            for note in report.notes:
-                notes.append({
-                    'id': note.id,
-                    'note_text': note.note_text,
-                    'created_at': note.created_at.isoformat()
-                })
-            
-            # Get products information
-            products = []
-            for rp in report.products:
-                product_data = {
-                    'id': rp.id,
-                    'product_id': rp.product_id,
-                    'product_name': rp.product.name if rp.product else 'Unknown Product',
-                    'displayed_price': float(rp.displayed_price) if rp.displayed_price else None,
-                    'nearly_expired': rp.expired_or_nearly_expired,
-                    'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None,
-                    'units_count': rp.units_count
-                }
+            try:
+                # Get first image for display
+                first_image = None
+                if report.images:
+                    first_image = base64.b64encode(report.images[0].image_data).decode('utf-8')
                 
-                # Add product pricing information for comparison
-                if rp.product:
-                    product_data.update({
-                        'taxed_price_client': float(rp.product.taxed_price_client) if rp.product.taxed_price_client else None,
-                        'untaxed_price_client': float(rp.product.untaxed_price_client) if rp.product.untaxed_price_client else None,
-                        'taxed_price_store': float(rp.product.taxed_price_store) if rp.product.taxed_price_store else None,
-                        'untaxed_price_store': float(rp.product.untaxed_price_store) if rp.product.untaxed_price_store else None
+                # Get all images
+                images = []
+                for img in report.images:
+                    images.append({
+                        'id': img.id,
+                        'filename': img.filename,
+                        'data': base64.b64encode(img.image_data).decode('utf-8'),
+                        'is_suggested_products': img.is_suggested_products if hasattr(img, 'is_suggested_products') else False,
+                        'created_at': img.created_at.isoformat()
                     })
                 
-                products.append(product_data)
-            
-            reports_data.append({
-                'id': report.id,
-                'client_id': report.client_id,
-                'client_name': report.client.name if report.client else 'Unknown Client',
-                'user_id': report.user_id,
-                'username': report.user.username if report.user else 'Unknown User',
-                'visit_date': report.visit_date.isoformat(),
-                'created_at': report.created_at.isoformat(),
-                'first_image': first_image,
-                'images': images,
-                'notes': notes,
-                'products': products,
-                'can_edit': current_user.role == UserRole.SUPER_ADMIN or report.user_id == current_user.id,
-                'is_active': report.is_active
-            })
+                # Get all notes
+                notes = []
+                for note in report.notes:
+                    notes.append({
+                        'id': note.id,
+                        'note_text': note.note_text,
+                        'created_at': note.created_at.isoformat()
+                    })
+                
+                # Get products information
+                products = []
+                for rp in report.products:
+                    try:
+                        product_data = {
+                            'id': rp.id,
+                            'product_id': rp.product_id,
+                            'product_name': rp.product.name if rp.product else 'Unknown Product',
+                            'displayed_price': float(rp.displayed_price) if rp.displayed_price else None,
+                            'nearly_expired': rp.expired_or_nearly_expired if hasattr(rp, 'expired_or_nearly_expired') else False,
+                            'expiry_date': rp.expiry_date.isoformat() if rp.expiry_date else None,
+                            'units_count': rp.units_count if hasattr(rp, 'units_count') else None
+                        }
+                        
+                        # Add product pricing information for comparison
+                        if rp.product:
+                            product_data.update({
+                                'taxed_price_client': float(rp.product.taxed_price_client) if rp.product.taxed_price_client else None,
+                                'untaxed_price_client': float(rp.product.untaxed_price_client) if rp.product.untaxed_price_client else None,
+                                'taxed_price_store': float(rp.product.taxed_price_store) if rp.product.taxed_price_store else None,
+                                'untaxed_price_store': float(rp.product.untaxed_price_store) if rp.product.untaxed_price_store else None
+                            })
+                        
+                        products.append(product_data)
+                    except Exception as prod_e:
+                        print(f"Error processing product {rp.id} in report {report.id}: {prod_e}")
+                        # Skip this product and continue
+                        continue
+                
+                reports_data.append({
+                    'id': report.id,
+                    'client_id': report.client_id,
+                    'client_name': report.client.name if report.client else 'Unknown Client',
+                    'user_id': report.user_id,
+                    'username': report.user.username if report.user else 'Unknown User',
+                    'visit_date': report.visit_date.isoformat(),
+                    'created_at': report.created_at.isoformat(),
+                    'first_image': first_image,
+                    'images': images,
+                    'notes': notes,
+                    'products': products,
+                    'can_edit': current_user.role == UserRole.SUPER_ADMIN or report.user_id == current_user.id,
+                    'is_active': report.is_active
+                })
+            except Exception as report_e:
+                print(f"Error processing report {report.id}: {report_e}")
+                # Skip this report and continue with the next
+                continue
         
         return jsonify(reports_data), 200
         
     except Exception as e:
+        print(f"Error in get_visit_reports: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': 'Failed to fetch visit reports', 'error': str(e)}), 500
 
 @app.route('/api/visit-reports', methods=['POST'])
@@ -1313,12 +1373,12 @@ def get_visit_report_html(report_id):
             'products': []
         }
         
-        # Add images (first 3)
-        for img in report.images[:3]:
+        # Add ALL images (both regular visit images and suggested products images)
+        for img in report.images:
             if img.image_data:
                 report_data['images'].append({
                     'data': base64.b64encode(img.image_data).decode('utf-8'),
-                    'is_suggested_products': img.is_suggested_products
+                    'is_suggested_products': img.is_suggested_products if hasattr(img, 'is_suggested_products') else False
                 })
         
         # Add products
