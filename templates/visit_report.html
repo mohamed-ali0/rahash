@@ -521,12 +521,26 @@
                     
                     const priceStyle = hasPriceMismatch ? 'style="color: #8B0000; font-weight: bold;"' : '';
                     
+                    // Check if product is expired (past today's date)
+                    let isExpired = false;
+                    if (product.expiry_date) {
+                        const expiryParts = product.expiry_date.split('/');
+                        if (expiryParts.length === 3) {
+                            const expiryDateObj = new Date(expiryParts[0], expiryParts[1] - 1, expiryParts[2]);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            isExpired = expiryDateObj < today;
+                        }
+                    }
+                    
+                    const expiryStyle = isExpired ? 'style="color: #8B0000; font-weight: bold;"' : '';
+                    
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${product.name || ''}</td>
                         <td ${priceStyle}>${product.our_price || ''}</td>
                         <td ${priceStyle}>${product.displayed_price || ''}</td>
-                        <td>${product.expiry_date || ''}</td>
+                        <td ${expiryStyle}>${product.expiry_date || ''}</td>
                         <td>${product.units_count || ''}</td>
                     `;
                 });
