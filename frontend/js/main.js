@@ -523,51 +523,33 @@ function getAuthHeaders() {
 // Load dashboard data
 async function loadDashboardData() {
     try {
-        // Load clients count (only active clients)
-        const clientsResponse = await fetch(`${API_BASE_URL}/clients`, {
-            headers: getAuthHeaders()
-        });
-        if (clientsResponse.ok) {
-            const clients = await clientsResponse.json();
-            const activeClients = clients.filter(client => client.is_active !== false);
-            document.getElementById('totalClients').textContent = activeClients.length || 0;
-        }
+        // Use the same fast paginated endpoints as page counters
+        const [clientsResponse, productsResponse, reportsResponse] = await Promise.all([
+            fetch(`${API_BASE_URL}/clients/list?page=1&per_page=1`, {
+                headers: getAuthHeaders()
+            }),
+            fetch(`${API_BASE_URL}/products/list?page=1&per_page=1`, {
+                headers: getAuthHeaders()
+            }),
+            fetch(`${API_BASE_URL}/visit-reports/list?page=1&per_page=1`, {
+                headers: getAuthHeaders()
+            })
+        ]);
         
-        // Load products count
-        const productsResponse = await fetch(`${API_BASE_URL}/products`, {
-            headers: getAuthHeaders()
-        });
-        if (productsResponse.ok) {
-            const products = await productsResponse.json();
-            document.getElementById('totalProducts').textContent = products.length || 0;
-        }
-        
-        // Load reports count (this month - only active reports)
-        const reportsResponse = await fetch(`${API_BASE_URL}/visit-reports`, {
-            headers: getAuthHeaders()
-        });
-        if (reportsResponse.ok) {
-            const reports = await reportsResponse.json();
+        if (clientsResponse.ok && productsResponse.ok && reportsResponse.ok) {
+            const [clientsData, productsData, reportsData] = await Promise.all([
+                clientsResponse.json(),
+                productsResponse.json(),
+                reportsResponse.json()
+            ]);
             
-            // Filter for active reports only
-            const activeReports = reports.filter(report => report.is_active !== false);
-            
-            // Filter active reports for current month
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth();
-            const currentYear = currentDate.getFullYear();
-            
-            const monthlyReports = activeReports.filter(report => {
-                const reportDate = new Date(report.visit_date);
-                return reportDate.getMonth() === currentMonth && 
-                       reportDate.getFullYear() === currentYear;
-            });
-            
-            document.getElementById('monthlyReports').textContent = monthlyReports.length || 0;
+            // Update dashboard counters using total from pagination (same as page counters)
+            document.getElementById('totalClients').textContent = clientsData.total || 0;
+            document.getElementById('totalProducts').textContent = productsData.total || 0;
+            document.getElementById('monthlyReports').textContent = reportsData.total || 0;
         } else {
-            document.getElementById('monthlyReports').textContent = '0';
+            console.error('Failed to load dashboard data');
         }
-        
     } catch (error) {
         console.error('Error loading dashboard data:', error);
     }
@@ -973,8 +955,8 @@ const ClientManager = {
                 // Add load more button if there are more clients
                 this.addLoadMoreButton('clients');
                 
-                // Add scroll detection for auto-loading
-                this.setupScrollDetection('clients');
+                // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
+                // this.setupScrollDetection('clients');
                 
                 // Update status indicator
                 this.updateStatusIndicator('clients', statusFilter, this.totalClients);
@@ -1154,7 +1136,11 @@ const ClientManager = {
             window.removeEventListener('scroll', this.scrollListener);
         }
         
+        let isLoading = false; // Prevent multiple simultaneous loads
+        
         this.scrollListener = () => {
+            if (isLoading) return; // Prevent multiple calls
+            
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const windowHeight = window.innerHeight;
             const documentHeight = document.documentElement.scrollHeight;
@@ -1166,19 +1152,24 @@ const ClientManager = {
                                this.hasMoreReports;
                 
                 if (hasMore) {
-                    // Auto-trigger load more
-                    if (type === 'clients') {
-                        this.loadMoreClients();
-                    } else if (type === 'products') {
-                        this.loadMoreProducts();
-                    } else if (type === 'reports') {
-                        this.loadMoreReports();
-                    }
+                    isLoading = true; // Set loading flag
+                    
+                    // Auto-trigger load more with timeout to prevent crashes
+                    setTimeout(() => {
+                        if (type === 'clients') {
+                            this.loadMoreClients();
+                        } else if (type === 'products') {
+                            this.loadMoreProducts();
+                        } else if (type === 'reports') {
+                            this.loadMoreReports();
+                        }
+                        isLoading = false; // Reset flag after load
+                    }, 100);
                 }
             }
         };
         
-        // Add scroll listener
+        // Add scroll listener with throttling
         window.addEventListener('scroll', this.scrollListener, { passive: true });
     },
     
@@ -2320,8 +2311,8 @@ const ProductManager = {
                 // Add load more button if there are more products
                 this.addLoadMoreButton('products');
                 
-                // Add scroll detection for auto-loading
-                this.setupScrollDetection('products');
+                // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
+                // this.setupScrollDetection('products');
             } else {
                 console.error('Failed to load products');
                 productsList.innerHTML = '<p class="no-data">Failed to load products</p>';
@@ -3713,8 +3704,8 @@ const ReportManager = {
                 // Add load more button if there are more reports
                 this.addLoadMoreButton('reports');
                 
-                // Add scroll detection for auto-loading
-                this.setupScrollDetection('reports');
+                // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
+                // this.setupScrollDetection('reports');
                 
                 // Update status indicator
                 this.updateStatusIndicator('reports', statusFilter, this.totalReports);
