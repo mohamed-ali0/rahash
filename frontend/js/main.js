@@ -940,7 +940,8 @@ const ClientManager = {
                 headers: getAuthHeaders()
             });
             if (response.ok) {
-                let clients = await response.json();
+                const data = await response.json();
+                let clients = data.clients || data; // Handle both old and new format
                 
                 // Client-side filtering based on status
                 if (statusFilter === 'active') {
@@ -961,6 +962,9 @@ const ClientManager = {
                 
                 this.displayClients(clients);
                 
+                // Load thumbnails for clients that have them
+                this.loadClientThumbnails(clients);
+                
                 // Update status indicator
                 this.updateStatusIndicator('clients', statusFilter, clients.length);
             } else {
@@ -971,6 +975,30 @@ const ClientManager = {
             console.error('Error loading clients:', error);
             const clientsList = document.getElementById('clientsList');
             clientsList.innerHTML = '<p class="no-data">Error loading clients</p>';
+        }
+    },
+    
+    loadClientThumbnails: async function(clients) {
+        /**Load thumbnails for clients that have them - called after displaying cards*/
+        const clientsWithThumbnails = clients.filter(client => client.has_thumbnail);
+        
+        for (const client of clientsWithThumbnails) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/clients/${client.id}/thumbnail`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const avatarElement = document.querySelector(`[data-client-id="${client.id}"]`);
+                    if (avatarElement && data.thumbnail) {
+                        avatarElement.innerHTML = `<img src="data:image/jpeg;base64,${data.thumbnail}" alt="${client.name}">`;
+                    }
+                }
+            } catch (error) {
+                console.error(`Error loading thumbnail for client ${client.id}:`, error);
+                // Keep the loading indicator or show placeholder
+            }
         }
     },
     
@@ -1089,9 +1117,9 @@ const ClientManager = {
                 return `
                     <div class="${cardClass}" ${!isInactive ? `onclick="ClientManager.viewClientDetails(${client.id})"` : ''}>
                         <div class="card-header">
-                            <div class="client-avatar">
-                                ${client.thumbnail ? 
-                                    `<img src="data:image/jpeg;base64,${client.thumbnail}" alt="${client.name}">` : 
+                            <div class="client-avatar" data-client-id="${client.id}">
+                                ${client.has_thumbnail ? 
+                                    `<div class="thumbnail-loading">⏳</div>` : 
                                     `<div class="avatar-placeholder">${client.name ? client.name.charAt(0).toUpperCase() : '👤'}</div>`
                                 }
                             </div>
@@ -2118,7 +2146,8 @@ const ProductManager = {
                 headers: getAuthHeaders()
             });
             if (response.ok) {
-                const products = await response.json();
+                const data = await response.json();
+                const products = data.products || data; // Handle both old and new format
                 
                 // Store products for search functionality
                 this.currentProducts = products;
@@ -2127,6 +2156,9 @@ const ProductManager = {
                 this.updateUIPermissions(products);
                 
                 this.displayProducts(products);
+                
+                // Load thumbnails for products that have them
+                this.loadProductThumbnails(products);
             } else {
                 console.error('Failed to load products');
                 productsList.innerHTML = '<p class="no-data">Failed to load products</p>';
@@ -2135,6 +2167,30 @@ const ProductManager = {
             console.error('Error loading products:', error);
             const productsList = document.getElementById('productsList');
             productsList.innerHTML = '<p class="no-data">Error loading products</p>';
+        }
+    },
+    
+    loadProductThumbnails: async function(products) {
+        /**Load thumbnails for products that have them - called after displaying cards*/
+        const productsWithThumbnails = products.filter(product => product.has_thumbnail);
+        
+        for (const product of productsWithThumbnails) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/products/${product.id}/thumbnail`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const imageElement = document.querySelector(`[data-product-id="${product.id}"]`);
+                    if (imageElement && data.thumbnail) {
+                        imageElement.innerHTML = `<img src="data:image/jpeg;base64,${data.thumbnail}" alt="${product.name}">`;
+                    }
+                }
+            } catch (error) {
+                console.error(`Error loading thumbnail for product ${product.id}:`, error);
+                // Keep the loading indicator or show fallback
+            }
         }
     },
     
@@ -2238,9 +2294,9 @@ const ProductManager = {
             // Display products cards
             productsList.innerHTML = products.map(product => `
                 <div class="product-card" onclick="ProductManager.viewExpanded(${product.id})">
-                    <div class="product-image">
-                        ${product.thumbnail ? 
-                            `<img src="data:image/jpeg;base64,${product.thumbnail}" alt="${product.name}">` : 
+                    <div class="product-image" data-product-id="${product.id}">
+                        ${product.has_thumbnail ? 
+                            `<div class="thumbnail-loading">⏳</div>` : 
                             `<img src="/logo.png" alt="${product.name}" class="logo-fallback">`
                         }
                     </div>
@@ -3326,7 +3382,8 @@ const ReportManager = {
                 headers: getAuthHeaders()
             });
             if (response.ok) {
-                let reports = await response.json();
+                const data = await response.json();
+                let reports = data.reports || data; // Handle both old and new format
                 
                 // Client-side filtering based on status
                 if (statusFilter === 'active') {

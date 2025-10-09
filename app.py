@@ -207,10 +207,10 @@ def get_client_names_only(current_user):
         
         # Use raw SQL for maximum speed
         if current_user.role == UserRole.SUPER_ADMIN:
-            query = text("SELECT id, name, region FROM client WHERE is_active = 1 ORDER BY name")
+            query = text("SELECT id, name, region FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
         else:
-            query = text("SELECT id, name, region FROM client WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
+            query = text("SELECT id, name, region FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
             result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
         
         # Return minimal data - just ID and name
@@ -1141,9 +1141,9 @@ def get_dashboard_stats(current_user):
         if current_user.role == UserRole.SUPER_ADMIN:
             query = text("""
                 SELECT 
-                    (SELECT COUNT(*) FROM client WHERE is_active = 1) as clients,
-                    (SELECT COUNT(*) FROM product) as products,
-                    (SELECT COUNT(*) FROM visit_report 
+                    (SELECT COUNT(*) FROM clients WHERE is_active = 1) as clients,
+                    (SELECT COUNT(*) FROM products) as products,
+                    (SELECT COUNT(*) FROM visit_reports 
                      WHERE is_active = 1 
                      AND strftime('%m', visit_date) = :month 
                      AND strftime('%Y', visit_date) = :year) as reports
@@ -1151,9 +1151,9 @@ def get_dashboard_stats(current_user):
         else:
             query = text("""
                 SELECT 
-                    (SELECT COUNT(*) FROM client WHERE is_active = 1 AND assigned_user_id = :user_id) as clients,
-                    (SELECT COUNT(*) FROM product) as products,
-                    (SELECT COUNT(*) FROM visit_report 
+                    (SELECT COUNT(*) FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id) as clients,
+                    (SELECT COUNT(*) FROM products) as products,
+                    (SELECT COUNT(*) FROM visit_reports 
                      WHERE user_id = :user_id 
                      AND is_active = 1 
                      AND strftime('%m', visit_date) = :month 
