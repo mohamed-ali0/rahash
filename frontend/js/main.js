@@ -1273,6 +1273,9 @@ const ClientManager = {
                 const data = await response.json();
                 const filteredClients = data.clients || [];
                 
+                // ✅ IMPORTANT: Store filtered clients so view/edit/delete functions can access them
+                this.currentClients = filteredClients;
+                
                 // Display results
                 this.displayClients(filteredClients, false);
                 
@@ -1324,6 +1327,9 @@ const ClientManager = {
                 if (selectedSalesman.trim()) {
                     searchResults = searchResults.filter(client => client.salesman_name === selectedSalesman);
                 }
+                
+                // ✅ IMPORTANT: Store search results so view/edit/delete functions can access them
+                this.currentClients = searchResults;
                 
                 // Display results
                 this.displayClients(searchResults, false);
