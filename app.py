@@ -198,10 +198,114 @@ def get_predefined_notes(current_user):
         return jsonify({'message': 'Error loading predefined notes'}), 500
 
 # Client Management Routes
+@app.route('/api/clients/list', methods=['GET'])
+@token_required
+def get_clients_list(current_user):
+    """Get clients list WITHOUT images - for fast initial loading"""
+    try:
+        show_all = request.args.get('show_all', 'false').lower() == 'true'
+        
+        if current_user.role == UserRole.SUPER_ADMIN:
+            if show_all:
+                clients = Client.query.all()
+            else:
+                clients = Client.query.filter_by(is_active=True).all()
+        else:
+            if show_all:
+                clients = Client.query.filter_by(assigned_user_id=current_user.id).all()
+            else:
+                clients = Client.query.filter_by(assigned_user_id=current_user.id, is_active=True).all()
+        
+        clients_data = []
+        for client in clients:
+            try:
+                # Get person data WITHOUT images
+                owner_data = None
+                if client.owner:
+                    owner_data = {
+                        'name': client.owner.name,
+                        'phone': client.owner.phone,
+                        'email': client.owner.email
+                    }
+                
+                purchasing_manager_data = None
+                if client.purchasing_manager:
+                    purchasing_manager_data = {
+                        'name': client.purchasing_manager.name,
+                        'phone': client.purchasing_manager.phone,
+                        'email': client.purchasing_manager.email
+                    }
+                
+                accountant_data = None
+                if client.accountant:
+                    accountant_data = {
+                        'name': client.accountant.name,
+                        'phone': client.accountant.phone,
+                        'email': client.accountant.email
+                    }
+                
+                # Count additional images but don't load data
+                image_count = len(client.images) if client.images else 0
+                
+                clients_data.append({
+                    'id': client.id,
+                    'name': client.name,
+                    'region': client.region,
+                    'location': client.location,
+                    'address': getattr(client, 'address', None),
+                    'salesman_name': client.salesman_name,
+                    'phone': client.owner.phone if client.owner else None,
+                    'thumbnail': base64.b64encode(client.thumbnail).decode('utf-8') if client.thumbnail else None,
+                    'image_count': image_count,  # Just the count, not the actual images
+                    'owner': owner_data,
+                    'purchasing_manager': purchasing_manager_data,
+                    'accountant': accountant_data,
+                    'assigned_user': client.assigned_user.username if client.assigned_user else None,
+                    'created_at': client.created_at.isoformat(),
+                    'is_active': client.is_active
+                })
+            except Exception as client_e:
+                print(f"Error processing client {client.id}: {client_e}")
+                continue
+        
+        return jsonify(clients_data), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch clients list', 'error': str(e)}), 500
+
+@app.route('/api/clients/<int:client_id>/images', methods=['GET'])
+@token_required
+def get_client_images(current_user, client_id):
+    """Get only images for a specific client - for lazy loading"""
+    try:
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Check permission
+        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Get additional images
+        additional_images = []
+        for img in client.images:
+            additional_images.append({
+                'id': img.id,
+                'filename': img.filename,
+                'data': base64.b64encode(img.image_data).decode('utf-8'),
+                'created_at': img.created_at.isoformat()
+            })
+        
+        return jsonify({'images': additional_images}), 200
+        
+    except Exception as e:
+        print(f"Error fetching images for client {client_id}: {e}")
+        return jsonify({'message': 'Failed to fetch client images', 'error': str(e)}), 500
+
 @app.route('/api/clients', methods=['GET'])
 @token_required
 def get_clients(current_user):
-    """Get all active clients assigned to current user"""
+    """Get all active clients assigned to current user - DEPRECATED, use /api/clients/list"""
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
         
@@ -718,10 +822,68 @@ def get_client_last_report_summary(current_user, client_id):
         return jsonify({'message': 'Failed to get client summary', 'error': str(e)}), 500
 
 # Product Management Routes
+@app.route('/api/products/list', methods=['GET'])
+@token_required
+def get_products_list(current_user):
+    """Get products list WITHOUT images - for fast initial loading"""
+    try:
+        products = Product.query.all()
+        
+        products_data = []
+        for product in products:
+            try:
+                # Count images but don't load data
+                image_count = len(product.images) if product.images else 0
+                
+                products_data.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'taxed_price_store': float(product.taxed_price_store) if product.taxed_price_store else 0.0,
+                    'untaxed_price_store': float(product.untaxed_price_store) if product.untaxed_price_store else 0.0,
+                    'taxed_price_client': float(product.taxed_price_client) if product.taxed_price_client else 0.0,
+                    'untaxed_price_client': float(product.untaxed_price_client) if product.untaxed_price_client else 0.0,
+                    'thumbnail': base64.b64encode(product.thumbnail).decode('utf-8') if product.thumbnail else None,
+                    'image_count': image_count,  # Just the count, not the actual images
+                    'created_at': product.created_at.isoformat(),
+                    'can_edit': current_user.role == UserRole.SUPER_ADMIN
+                })
+            except Exception as product_e:
+                print(f"Error processing product {product.id}: {product_e}")
+                continue
+        
+        return jsonify(products_data), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch products list', 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>/images', methods=['GET'])
+@token_required
+def get_product_images(current_user, product_id):
+    """Get only images for a specific product - for lazy loading"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Product not found'}), 404
+        
+        # Get additional images
+        additional_images = []
+        for img in product.images:
+            additional_images.append({
+                'id': img.id,
+                'filename': img.filename,
+                'data': base64.b64encode(img.image_data).decode('utf-8')
+            })
+        
+        return jsonify({'images': additional_images}), 200
+        
+    except Exception as e:
+        print(f"Error fetching images for product {product_id}: {e}")
+        return jsonify({'message': 'Failed to fetch product images', 'error': str(e)}), 500
+
 @app.route('/api/products', methods=['GET'])
 @token_required
 def get_products(current_user):
-    """Get all products (accessible to all authenticated users)"""
+    """Get all products - DEPRECATED, use /api/products/list"""
     try:
         products = Product.query.all()
         

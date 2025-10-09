@@ -916,8 +916,22 @@ const ClientManager = {
     
     loadClients: async function(statusFilter = 'active') {
         try {
-            // Determine API parameter based on status filter
-            let apiUrl = `${API_BASE_URL}/clients`;
+            // Show loading state immediately
+            const clientsList = document.getElementById('clientsList');
+            const loadingText = currentLanguage === 'ar' ? 'جاري تحميل العملاء...' : 'Loading clients...';
+            clientsList.innerHTML = `
+                <div class="loading-state">
+                    <div class="modern-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="loading-text">${loadingText}</p>
+                </div>
+            `;
+            
+            // Use lightweight list endpoint WITHOUT images
+            let apiUrl = `${API_BASE_URL}/clients/list`;
             if (statusFilter === 'all' || statusFilter === 'inactive') {
                 apiUrl += '?show_all=true';
             }
@@ -934,7 +948,6 @@ const ClientManager = {
                 } else if (statusFilter === 'inactive') {
                     clients = clients.filter(client => client.is_active === false);
                 }
-                // 'all' shows everything as loaded
                 
                 // Store clients for filtering
                 this.currentClients = clients;
@@ -950,9 +963,58 @@ const ClientManager = {
                 
                 // Update status indicator
                 this.updateStatusIndicator('clients', statusFilter, clients.length);
+            } else {
+                console.error('Failed to load clients');
+                clientsList.innerHTML = '<p class="no-data">Failed to load clients</p>';
             }
         } catch (error) {
             console.error('Error loading clients:', error);
+            const clientsList = document.getElementById('clientsList');
+            clientsList.innerHTML = '<p class="no-data">Error loading clients</p>';
+        }
+    },
+    
+    loadClientImages: async function(clientId) {
+        /**Load images for a specific client on demand*/
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${clientId}/images`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const imagesSection = document.querySelector(`#client-expanded-${clientId} .additional-images-section`);
+                
+                if (imagesSection && data.images) {
+                    // Replace loading spinner with actual images
+                    const galleryDiv = imagesSection.querySelector('.image-gallery');
+                    if (galleryDiv) {
+                        galleryDiv.innerHTML = data.images.map((img, index) => `
+                            <div class="gallery-item" onclick="ClientManager.viewImageFullscreen('${img.data}', '${img.filename}')">
+                                <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}" title="${img.filename}">
+                                <div class="gallery-overlay">
+                                    <span class="gallery-filename">${img.filename}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        // Update the client object with loaded images
+                        const client = this.currentClients.find(c => c.id === clientId);
+                        if (client) {
+                            client.additional_images = data.images;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading client images:', error);
+            const imagesSection = document.querySelector(`#client-expanded-${clientId} .additional-images-section`);
+            if (imagesSection) {
+                const galleryDiv = imagesSection.querySelector('.image-gallery');
+                if (galleryDiv) {
+                    galleryDiv.innerHTML = `<p class="error-text">${currentLanguage === 'ar' ? 'فشل تحميل الصور' : 'Failed to load images'}</p>`;
+                }
+            }
         }
     },
     
@@ -1293,20 +1355,16 @@ const ClientManager = {
                         </div>
                     </div>
                     
-                    ${client.additional_images && client.additional_images.length > 0 ? `
-                    <div class="detail-section">
-                        <h3>${currentLanguage === 'ar' ? 'الصور الإضافية' : 'Additional Images'}</h3>
+                    ${client.image_count > 0 ? `
+                    <div class="detail-section additional-images-section" id="client-expanded-${client.id}">
+                        <h3>${currentLanguage === 'ar' ? 'الصور الإضافية' : 'Additional Images'} (${client.image_count})</h3>
                         <div class="image-gallery">
-                            <div class="gallery-grid">
-                                ${client.additional_images.map((img, index) => `
-                                    <div class="gallery-item" onclick="ClientManager.viewClientImages(${client.id}, ${index})">
-                                        <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}" title="${img.filename}">
-                                        <div class="gallery-overlay">
-                                            <span class="gallery-filename">${img.filename || currentLanguage === 'ar' ? 'صورة العميل' : 'Client Image'}</span>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                            <div class="modern-spinner">
+                                <div class="spinner-ring"></div>
+                                <div class="spinner-ring"></div>
+                                <div class="spinner-ring"></div>
                             </div>
+                            <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل الصور...' : 'Loading images...'}</p>
                         </div>
                     </div>
                     ` : ''}
@@ -1327,6 +1385,11 @@ const ClientManager = {
         `;
         
         openModalAndDisableScroll(modal);
+        
+        // Lazy load images after modal is displayed
+        if (client.image_count > 0) {
+            this.loadClientImages(client.id);
+        }
     },
     
     viewClientImage: function(imageData, clientName) {
@@ -2036,7 +2099,22 @@ const ProductManager = {
     
     loadProducts: async function() {
         try {
-            const response = await fetch(`${API_BASE_URL}/products`, {
+            // Show loading state immediately
+            const productsList = document.getElementById('productsList');
+            const loadingText = currentLanguage === 'ar' ? 'جاري تحميل المنتجات...' : 'Loading products...';
+            productsList.innerHTML = `
+                <div class="loading-state">
+                    <div class="modern-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="loading-text">${loadingText}</p>
+                </div>
+            `;
+            
+            // Use lightweight list endpoint WITHOUT images
+            const response = await fetch(`${API_BASE_URL}/products/list`, {
                 headers: getAuthHeaders()
             });
             if (response.ok) {
@@ -2049,9 +2127,58 @@ const ProductManager = {
                 this.updateUIPermissions(products);
                 
                 this.displayProducts(products);
+            } else {
+                console.error('Failed to load products');
+                productsList.innerHTML = '<p class="no-data">Failed to load products</p>';
             }
         } catch (error) {
             console.error('Error loading products:', error);
+            const productsList = document.getElementById('productsList');
+            productsList.innerHTML = '<p class="no-data">Error loading products</p>';
+        }
+    },
+    
+    loadProductImages: async function(productId) {
+        /**Load images for a specific product on demand*/
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/${productId}/images`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const imagesSection = document.querySelector(`#product-expanded-${productId} .additional-images-section`);
+                
+                if (imagesSection && data.images) {
+                    // Replace loading spinner with actual images
+                    const galleryDiv = imagesSection.querySelector('.image-gallery');
+                    if (galleryDiv) {
+                        galleryDiv.innerHTML = data.images.map((img, index) => `
+                            <div class="gallery-item" onclick="ProductManager.viewImageFullscreen('${img.data}', '${img.filename}')">
+                                <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}" title="${img.filename}">
+                                <div class="gallery-overlay">
+                                    <span class="gallery-filename">${img.filename}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        // Update the product object with loaded images
+                        const product = this.currentProducts.find(p => p.id === productId);
+                        if (product) {
+                            product.images = data.images;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading product images:', error);
+            const imagesSection = document.querySelector(`#product-expanded-${productId} .additional-images-section`);
+            if (imagesSection) {
+                const galleryDiv = imagesSection.querySelector('.image-gallery');
+                if (galleryDiv) {
+                    galleryDiv.innerHTML = `<p class="error-text">${currentLanguage === 'ar' ? 'فشل تحميل الصور' : 'Failed to load images'}</p>`;
+                }
+            }
         }
     },
     
@@ -2382,21 +2509,19 @@ const ProductManager = {
             ? `<img src="data:image/jpeg;base64,${product.thumbnail}" alt="${product.name}">`
             : product.name.charAt(0).toUpperCase();
         
-        // Build gallery images
+        // Build gallery images with lazy loading
         let galleryHtml = '';
-        if (product.images && product.images.length > 0) {
+        if (product.image_count > 0) {
             galleryHtml = `
-                <div class="image-gallery">
-                    <h4 class="gallery-title">${currentLanguage === 'ar' ? 'معرض الصور' : 'Image Gallery'}</h4>
+                <div class="image-gallery additional-images-section" id="product-expanded-${product.id}">
+                    <h4 class="gallery-title">${currentLanguage === 'ar' ? 'معرض الصور' : 'Image Gallery'} (${product.image_count})</h4>
                     <div class="gallery-grid">
-                        ${product.images.map((img, index) => `
-                            <div class="gallery-item" onclick="ProductManager.viewProductImages(${product.id}, ${index + 1})">
-                                <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}">
-                                <div class="gallery-overlay">
-                                    <span>🔍</span>
-                                </div>
-                            </div>
-                        `).join('')}
+                        <div class="modern-spinner">
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-ring"></div>
+                            <div class="spinner-ring"></div>
+                        </div>
+                        <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل الصور...' : 'Loading images...'}</p>
                     </div>
                 </div>
             `;
@@ -2443,6 +2568,11 @@ const ProductManager = {
         // Show modal
         expandedModal.classList.add('active');
         ScrollManager.disableScroll();
+        
+        // Lazy load images after modal is displayed
+        if (product.image_count > 0) {
+            this.loadProductImages(product.id);
+        }
         
         // Close modal when clicking outside
         expandedModal.addEventListener('click', function(e) {
