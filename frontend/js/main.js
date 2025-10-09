@@ -3445,7 +3445,8 @@ const ReportManager = {
     
     loadClientsForDropdown: async function() {
         try {
-            const response = await fetch(`${API_BASE_URL}/clients`, {
+            // Use ultra-lightweight names-only endpoint for maximum speed
+            const response = await fetch(`${API_BASE_URL}/clients/names`, {
                 headers: getAuthHeaders()
             });
             if (response.ok) {

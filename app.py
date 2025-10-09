@@ -198,23 +198,56 @@ def get_predefined_notes(current_user):
         return jsonify({'message': 'Error loading predefined notes'}), 500
 
 # Client Management Routes
+@app.route('/api/clients/names', methods=['GET'])
+@token_required
+def get_client_names_only(current_user):
+    """Get ONLY client IDs and names - ultra lightweight for dropdowns"""
+    try:
+        from sqlalchemy import text
+        
+        # Use raw SQL for maximum speed
+        if current_user.role == UserRole.SUPER_ADMIN:
+            query = text("SELECT id, name, region FROM client WHERE is_active = 1 ORDER BY name")
+            result = db.session.execute(query).fetchall()
+        else:
+            query = text("SELECT id, name, region FROM client WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
+            result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
+        
+        # Return minimal data - just ID and name
+        clients = [{'id': row[0], 'name': row[1], 'region': row[2]} for row in result]
+        
+        return jsonify(clients), 200
+        
+    except Exception as e:
+        print(f"Error fetching client names: {e}")
+        return jsonify({'message': 'Failed to fetch client names', 'error': str(e)}), 500
+
 @app.route('/api/clients/list', methods=['GET'])
 @token_required
 def get_clients_list(current_user):
-    """Get clients list WITHOUT images - for fast initial loading"""
+    """Get clients list with PAGINATION - NO images, NO thumbnails for max speed"""
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))  # Load 20 at a time
         
+        # Build query
         if current_user.role == UserRole.SUPER_ADMIN:
             if show_all:
-                clients = Client.query.all()
+                query = Client.query
             else:
-                clients = Client.query.filter_by(is_active=True).all()
+                query = Client.query.filter_by(is_active=True)
         else:
             if show_all:
-                clients = Client.query.filter_by(assigned_user_id=current_user.id).all()
+                query = Client.query.filter_by(assigned_user_id=current_user.id)
             else:
-                clients = Client.query.filter_by(assigned_user_id=current_user.id, is_active=True).all()
+                query = Client.query.filter_by(assigned_user_id=current_user.id, is_active=True)
+        
+        # Get total count for pagination info
+        total_count = query.count()
+        
+        # Apply pagination
+        clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()
         
         clients_data = []
         for client in clients:
@@ -255,8 +288,8 @@ def get_clients_list(current_user):
                     'address': getattr(client, 'address', None),
                     'salesman_name': client.salesman_name,
                     'phone': client.owner.phone if client.owner else None,
-                    'thumbnail': base64.b64encode(client.thumbnail).decode('utf-8') if client.thumbnail else None,
-                    'image_count': image_count,  # Just the count, not the actual images
+                    'has_thumbnail': client.thumbnail is not None,  # Flag only, no data
+                    'image_count': image_count,
                     'owner': owner_data,
                     'purchasing_manager': purchasing_manager_data,
                     'accountant': accountant_data,
@@ -268,10 +301,38 @@ def get_clients_list(current_user):
                 print(f"Error processing client {client.id}: {client_e}")
                 continue
         
-        return jsonify(clients_data), 200
+        # Return with pagination info
+        return jsonify({
+            'clients': clients_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'has_more': page * per_page < total_count
+        }), 200
         
     except Exception as e:
         return jsonify({'message': 'Failed to fetch clients list', 'error': str(e)}), 500
+
+@app.route('/api/clients/<int:client_id>/thumbnail', methods=['GET'])
+@token_required
+def get_client_thumbnail(current_user, client_id):
+    """Get ONLY thumbnail for a specific client - for lazy loading on scroll"""
+    try:
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Check permission
+        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        thumbnail = base64.b64encode(client.thumbnail).decode('utf-8') if client.thumbnail else None
+        
+        return jsonify({'thumbnail': thumbnail}), 200
+        
+    except Exception as e:
+        print(f"Error fetching thumbnail for client {client_id}: {e}")
+        return jsonify({'message': 'Failed to fetch thumbnail', 'error': str(e)}), 500
 
 @app.route('/api/clients/<int:client_id>/images', methods=['GET'])
 @token_required
@@ -825,9 +886,16 @@ def get_client_last_report_summary(current_user, client_id):
 @app.route('/api/products/list', methods=['GET'])
 @token_required
 def get_products_list(current_user):
-    """Get products list WITHOUT images - for fast initial loading"""
+    """Get products list with PAGINATION - NO images, NO thumbnails for max speed"""
     try:
-        products = Product.query.all()
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))  # Load 20 at a time
+        
+        # Get total count
+        total_count = Product.query.count()
+        
+        # Apply pagination
+        products = Product.query.order_by(Product.name).offset((page - 1) * per_page).limit(per_page).all()
         
         products_data = []
         for product in products:
@@ -842,8 +910,8 @@ def get_products_list(current_user):
                     'untaxed_price_store': float(product.untaxed_price_store) if product.untaxed_price_store else 0.0,
                     'taxed_price_client': float(product.taxed_price_client) if product.taxed_price_client else 0.0,
                     'untaxed_price_client': float(product.untaxed_price_client) if product.untaxed_price_client else 0.0,
-                    'thumbnail': base64.b64encode(product.thumbnail).decode('utf-8') if product.thumbnail else None,
-                    'image_count': image_count,  # Just the count, not the actual images
+                    'has_thumbnail': product.thumbnail is not None,  # Flag only, no data
+                    'image_count': image_count,
                     'created_at': product.created_at.isoformat(),
                     'can_edit': current_user.role == UserRole.SUPER_ADMIN
                 })
@@ -851,10 +919,34 @@ def get_products_list(current_user):
                 print(f"Error processing product {product.id}: {product_e}")
                 continue
         
-        return jsonify(products_data), 200
+        # Return with pagination info
+        return jsonify({
+            'products': products_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'has_more': page * per_page < total_count
+        }), 200
         
     except Exception as e:
         return jsonify({'message': 'Failed to fetch products list', 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>/thumbnail', methods=['GET'])
+@token_required
+def get_product_thumbnail(current_user, product_id):
+    """Get ONLY thumbnail for a specific product - for lazy loading on scroll"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Product not found'}), 404
+        
+        thumbnail = base64.b64encode(product.thumbnail).decode('utf-8') if product.thumbnail else None
+        
+        return jsonify({'thumbnail': thumbnail}), 200
+        
+    except Exception as e:
+        print(f"Error fetching thumbnail for product {product_id}: {e}")
+        return jsonify({'message': 'Failed to fetch thumbnail', 'error': str(e)}), 500
 
 @app.route('/api/products/<int:product_id>/images', methods=['GET'])
 @token_required
@@ -1036,42 +1128,52 @@ def delete_product(current_user, product_id):
 @app.route('/api/dashboard/stats', methods=['GET'])
 @token_required
 def get_dashboard_stats(current_user):
-    """Get dashboard statistics - optimized for fast loading"""
+    """Get dashboard statistics - ULTRA OPTIMIZED with raw SQL"""
     try:
-        # Count active clients (fast count query)
-        active_clients_count = Client.query.filter_by(is_active=True).count()
-        
-        # Count total products (fast count query)
-        total_products_count = Product.query.count()
-        
-        # Count reports this month (optimized query)
         from datetime import datetime
-        from sqlalchemy import extract
+        from sqlalchemy import text
         
         current_date = datetime.now()
         current_month = current_date.month
         current_year = current_date.year
         
+        # Use raw SQL for maximum speed - single query with all counts
         if current_user.role == UserRole.SUPER_ADMIN:
-            # Super admin sees all reports
-            monthly_reports_count = VisitReport.query.filter(
-                VisitReport.is_active == True,
-                extract('month', VisitReport.visit_date) == current_month,
-                extract('year', VisitReport.visit_date) == current_year
-            ).count()
+            query = text("""
+                SELECT 
+                    (SELECT COUNT(*) FROM client WHERE is_active = 1) as clients,
+                    (SELECT COUNT(*) FROM product) as products,
+                    (SELECT COUNT(*) FROM visit_report 
+                     WHERE is_active = 1 
+                     AND strftime('%m', visit_date) = :month 
+                     AND strftime('%Y', visit_date) = :year) as reports
+            """)
         else:
-            # Regular users see only their reports
-            monthly_reports_count = VisitReport.query.filter(
-                VisitReport.user_id == current_user.id,
-                VisitReport.is_active == True,
-                extract('month', VisitReport.visit_date) == current_month,
-                extract('year', VisitReport.visit_date) == current_year
-            ).count()
+            query = text("""
+                SELECT 
+                    (SELECT COUNT(*) FROM client WHERE is_active = 1 AND assigned_user_id = :user_id) as clients,
+                    (SELECT COUNT(*) FROM product) as products,
+                    (SELECT COUNT(*) FROM visit_report 
+                     WHERE user_id = :user_id 
+                     AND is_active = 1 
+                     AND strftime('%m', visit_date) = :month 
+                     AND strftime('%Y', visit_date) = :year) as reports
+            """)
+        
+        # Execute query
+        result = db.session.execute(
+            query, 
+            {
+                'user_id': current_user.id,
+                'month': f'{current_month:02d}',
+                'year': str(current_year)
+            }
+        ).fetchone()
         
         return jsonify({
-            'total_clients': active_clients_count,
-            'total_products': total_products_count,
-            'monthly_reports': monthly_reports_count
+            'total_clients': result[0] if result else 0,
+            'total_products': result[1] if result else 0,
+            'monthly_reports': result[2] if result else 0
         }), 200
         
     except Exception as e:
@@ -1082,20 +1184,29 @@ def get_dashboard_stats(current_user):
 @app.route('/api/visit-reports/list', methods=['GET'])
 @token_required
 def get_visit_reports_list(current_user):
-    """Get report list with full data but WITHOUT images - Load images on demand"""
+    """Get report list with PAGINATION - WITHOUT images for max speed"""
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 15))  # Load 15 reports at a time
         
+        # Build query
         if current_user.role == UserRole.SUPER_ADMIN:
             if show_all:
-                reports = VisitReport.query.order_by(VisitReport.created_at.desc()).all()
+                query = VisitReport.query
             else:
-                reports = VisitReport.query.filter_by(is_active=True).order_by(VisitReport.created_at.desc()).all()
+                query = VisitReport.query.filter_by(is_active=True)
         else:
             if show_all:
-                reports = VisitReport.query.filter_by(user_id=current_user.id).order_by(VisitReport.created_at.desc()).all()
+                query = VisitReport.query.filter_by(user_id=current_user.id)
             else:
-                reports = VisitReport.query.filter_by(user_id=current_user.id, is_active=True).order_by(VisitReport.created_at.desc()).all()
+                query = VisitReport.query.filter_by(user_id=current_user.id, is_active=True)
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        reports = query.order_by(VisitReport.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
         
         reports_data = []
         for report in reports:
@@ -1157,7 +1268,14 @@ def get_visit_reports_list(current_user):
                 print(f"Error processing report {report.id}: {report_e}")
                 continue
         
-        return jsonify(reports_data), 200
+        # Return with pagination info
+        return jsonify({
+            'reports': reports_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'has_more': page * per_page < total_count
+        }), 200
         
     except Exception as e:
         print(f"Error in get_visit_reports_list: {e}")
