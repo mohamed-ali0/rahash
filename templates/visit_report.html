@@ -522,6 +522,14 @@
                 <span class="value" id="client-name">اسم_عميل</span>
             </div>
             <div class="info-line">
+                <span class="label">العنوان:</span>
+                <span class="value" id="client-address">-</span>
+            </div>
+            <div class="info-line">
+                <span class="label">رقم التواصل:</span>
+                <span class="value" id="client-phone">-</span>
+            </div>
+            <div class="info-line">
                 <span class="label">التاريخ:</span>
                 <span class="value" id="visit-date">
                     <span id="visit-day"></span>
@@ -669,6 +677,20 @@
                 document.getElementById('client-name').textContent = data.client_name;
             }
             
+            // Set client phone number (owner phone)
+            if (data.client_phone) {
+                document.getElementById('client-phone').textContent = data.client_phone;
+            } else {
+                document.getElementById('client-phone').textContent = '-';
+            }
+            
+            // Set client address
+            if (data.client_address) {
+                document.getElementById('client-address').textContent = data.client_address;
+            } else {
+                document.getElementById('client-address').textContent = '-';
+            }
+            
             // Set visit date with Day, Gregorian and Islamic (Umm al-Qura) calendars
             if (data.visit_date) {
                 try {
@@ -768,20 +790,33 @@
                     // Check for price mismatch using price tolerance
                     // Tolerance only applies when displayed price is LESS than our price
                     // If displayed price is HIGHER than our price, it's always a mismatch (no tolerance)
-                    const ourPrice = product.our_price_raw;
-                    const displayedPrice = product.displayed_price_raw;
+                    const ourPrice = parseFloat(product.our_price_raw);
+                    const displayedPrice = parseFloat(product.displayed_price_raw);
                     const tolerance = parseFloat(data.price_tolerance) || 1.0;
                     
+                    console.log(`Price Check for ${product.name}:`, {
+                        ourPrice,
+                        displayedPrice,
+                        tolerance,
+                        difference: Math.abs(ourPrice - displayedPrice),
+                        threshold: ourPrice - tolerance
+                    });
+                    
                     let hasPriceMismatch = false;
-                    if (ourPrice !== null && ourPrice !== undefined && 
-                        displayedPrice !== null && displayedPrice !== undefined) {
+                    if (!isNaN(ourPrice) && !isNaN(displayedPrice)) {
                         if (displayedPrice > ourPrice) {
-                            // Displayed price is higher than ours - ALWAYS a mismatch (no tolerance)
+                            // Displayed price is higher than ours - ALWAYS a mismatch (no tolerance for increases)
+                            console.log('  → Issue: Displayed price HIGHER than our price');
+                            hasPriceMismatch = true;
+                        } else if (displayedPrice < (ourPrice - tolerance)) {
+                            // Displayed price is too low - beyond tolerance threshold
+                            console.log(`  → Issue: Displayed price too LOW (${displayedPrice} < ${ourPrice - tolerance})`);
                             hasPriceMismatch = true;
                         } else {
-                            // Displayed price is lower - allow tolerance
-                            hasPriceMismatch = (ourPrice - displayedPrice) > tolerance;
+                            console.log('  → OK: Price within acceptable range');
                         }
+                    } else {
+                        console.log('  → Skipping: Invalid price values');
                     }
                     
                     const priceStyle = hasPriceMismatch ? 'style="color: #8B0000; font-weight: bold;"' : '';

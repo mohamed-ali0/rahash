@@ -222,6 +222,235 @@ def get_client_names_only(current_user):
         print(f"Error fetching client names: {e}")
         return jsonify({'message': 'Failed to fetch client names', 'error': str(e)}), 500
 
+@app.route('/api/clients/filter-data', methods=['GET'])
+@token_required
+def get_client_filter_data(current_user):
+    """Get ALL unique regions and salesmen for filter dropdowns"""
+    try:
+        from sqlalchemy import text
+        
+        # Use raw SQL for maximum speed
+        if current_user.role == UserRole.SUPER_ADMIN:
+            # Super admin sees all regions and salesmen
+            regions_result = db.session.execute(text("""
+                SELECT DISTINCT region FROM clients 
+                WHERE is_active = 1 AND region IS NOT NULL AND region != ''
+                ORDER BY region
+            """)).fetchall()
+            
+            salesmen_result = db.session.execute(text("""
+                SELECT DISTINCT salesman_name FROM clients 
+                WHERE is_active = 1 AND salesman_name IS NOT NULL AND salesman_name != ''
+                ORDER BY salesman_name
+            """)).fetchall()
+        else:
+            # Regular users only see their assigned clients' data
+            regions_result = db.session.execute(text("""
+                SELECT DISTINCT region FROM clients 
+                WHERE is_active = 1 AND assigned_user_id = :user_id 
+                AND region IS NOT NULL AND region != ''
+                ORDER BY region
+            """), {'user_id': current_user.id}).fetchall()
+            
+            salesmen_result = db.session.execute(text("""
+                SELECT DISTINCT salesman_name FROM clients 
+                WHERE is_active = 1 AND assigned_user_id = :user_id 
+                AND salesman_name IS NOT NULL AND salesman_name != ''
+                ORDER BY salesman_name
+            """), {'user_id': current_user.id}).fetchall()
+        
+        # Extract values from result
+        regions = [row[0] for row in regions_result]
+        salesmen = [row[0] for row in salesmen_result]
+        
+        return jsonify({
+            'regions': regions,
+            'salesmen': salesmen
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in get_client_filter_data: {e}")
+        return jsonify({'message': 'Failed to fetch filter data', 'error': str(e)}), 500
+
+@app.route('/api/clients/search', methods=['GET'])
+@token_required
+def search_clients(current_user):
+    """Search ALL clients by name - returns paginated results"""
+    try:
+        search_term = request.args.get('q', '').strip()
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        show_all = request.args.get('show_all', 'false').lower() == 'true'
+        
+        # Build base query
+        if current_user.role == UserRole.SUPER_ADMIN:
+            if show_all:
+                query = Client.query
+            else:
+                query = Client.query.filter_by(is_active=True)
+        else:
+            if show_all:
+                query = Client.query.filter_by(assigned_user_id=current_user.id)
+            else:
+                query = Client.query.filter_by(assigned_user_id=current_user.id, is_active=True)
+        
+        # Add search filter
+        if search_term:
+            query = query.filter(Client.name.ilike(f'%{search_term}%'))
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()
+        
+        # Return same format as clients/list
+        clients_data = []
+        for client in clients:
+            clients_data.append({
+                'id': client.id,
+                'name': client.name,
+                'region': client.region,
+                'location': client.location,
+                'address': client.address,
+                'salesman_name': client.salesman_name,
+                'has_thumbnail': client.thumbnail is not None,
+                'is_active': client.is_active,
+                'owner': {
+                    'id': client.owner.id if client.owner else None,
+                    'name': client.owner.name if client.owner else None,
+                    'phone': client.owner.phone if client.owner else None,
+                    'email': client.owner.email if client.owner else None
+                } if client.owner else None,
+                'purchasing_manager': {
+                    'id': client.purchasing_manager.id if client.purchasing_manager else None,
+                    'name': client.purchasing_manager.name if client.purchasing_manager else None,
+                    'phone': client.purchasing_manager.phone if client.purchasing_manager else None
+                } if client.purchasing_manager else None,
+                'accountant': {
+                    'id': client.accountant.id if client.accountant else None,
+                    'name': client.accountant.name if client.accountant else None,
+                    'phone': client.accountant.phone if client.accountant else None
+                } if client.accountant else None
+            })
+        
+        return jsonify({
+            'clients': clients_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'has_more': (page * per_page) < total_count
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in search_clients: {e}")
+        return jsonify({'message': 'Failed to search clients', 'error': str(e)}), 500
+
+@app.route('/api/products/search', methods=['GET'])
+@token_required
+def search_products(current_user):
+    """Search ALL products by name - returns paginated results"""
+    try:
+        search_term = request.args.get('q', '').strip()
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        
+        # Build query with search filter
+        query = Product.query
+        if search_term:
+            query = query.filter(Product.name.ilike(f'%{search_term}%'))
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        products = query.order_by(Product.name).offset((page - 1) * per_page).limit(per_page).all()
+        
+        # Return same format as products/list
+        products_data = []
+        for product in products:
+            image_count = len(product.images) if product.images else 0
+            products_data.append({
+                'id': product.id,
+                'name': product.name,
+                'taxed_price_store': float(product.taxed_price_store) if product.taxed_price_store else 0.0,
+                'untaxed_price_store': float(product.untaxed_price_store) if product.untaxed_price_store else 0.0,
+                'taxed_price_client': float(product.taxed_price_client) if product.taxed_price_client else 0.0,
+                'untaxed_price_client': float(product.untaxed_price_client) if product.untaxed_price_client else 0.0,
+                'has_thumbnail': product.thumbnail is not None,
+                'image_count': image_count
+            })
+        
+        return jsonify({
+            'products': products_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'has_more': (page * per_page) < total_count
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in search_products: {e}")
+        return jsonify({'message': 'Failed to search products', 'error': str(e)}), 500
+
+@app.route('/api/visit-reports/search', methods=['GET'])
+@token_required
+def search_reports(current_user):
+    """Search ALL reports by client name - returns paginated results"""
+    try:
+        search_term = request.args.get('q', '').strip()
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 15))
+        show_all = request.args.get('show_all', 'false').lower() == 'true'
+        
+        # Build base query
+        if current_user.role == UserRole.SUPER_ADMIN:
+            if show_all:
+                query = VisitReport.query
+            else:
+                query = VisitReport.query.filter_by(is_active=True)
+        else:
+            if show_all:
+                query = VisitReport.query.filter_by(user_id=current_user.id)
+            else:
+                query = VisitReport.query.filter_by(user_id=current_user.id, is_active=True)
+        
+        # Add search filter (search in client name)
+        if search_term:
+            query = query.join(Client).filter(Client.name.ilike(f'%{search_term}%'))
+        
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        reports = query.order_by(VisitReport.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        
+        # Return same format as visit-reports/list (metadata only)
+        reports_data = []
+        for report in reports:
+            reports_data.append({
+                'id': report.id,
+                'client_name': report.client.name if report.client else 'Unknown',
+                'visit_date': report.visit_date.strftime('%Y-%m-%d'),
+                'created_at': report.created_at.isoformat(),
+                'is_active': report.is_active,
+                'has_images': len(report.images) > 0 if report.images else False,
+                'product_count': len(report.products) if report.products else 0,
+                'note_count': len(report.notes) if report.notes else 0
+            })
+        
+        return jsonify({
+            'reports': reports_data,
+            'page': page,
+            'per_page': per_page,
+            'total': total_count,
+            'has_more': (page * per_page) < total_count
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in search_reports: {e}")
+        return jsonify({'message': 'Failed to search reports', 'error': str(e)}), 500
+
 @app.route('/api/clients/list', methods=['GET'])
 @token_required
 def get_clients_list(current_user):
@@ -813,11 +1042,12 @@ def get_client_last_report_summary(current_user, client_id):
                 # Check for price mismatch
                 has_price_issue = False
                 if displayed_price > our_price:
-                    # Displayed price is higher than ours - ALWAYS a mismatch
+                    # Displayed price is higher than ours - ALWAYS a mismatch (no tolerance for increases)
                     has_price_issue = True
-                else:
-                    # Displayed price is lower - allow tolerance
-                    has_price_issue = (our_price - displayed_price) > price_tolerance
+                elif displayed_price < (our_price - price_tolerance):
+                    # Displayed price is too low - beyond tolerance threshold
+                    has_price_issue = True
+                # else: displayed_price is within acceptable range (our_price - tolerance <= displayed_price <= our_price)
                 
                 if has_price_issue:
                     summary['priceIssues'] = True
@@ -1777,6 +2007,8 @@ def get_visit_report_html(report_id):
         # Prepare report data
         report_data = {
             'client_name': report.client.name if report.client else 'غير محدد',
+            'client_address': report.client.address if (report.client and report.client.address) else '-',
+            'client_phone': report.client.owner.phone if (report.client and report.client.owner and report.client.owner.phone) else '-',
             'visit_date': report.visit_date.strftime('%Y/%m/%d'),
             'notes': '\\n'.join([note.note_text for note in report.notes]) if report.notes else '',
             'images': [],

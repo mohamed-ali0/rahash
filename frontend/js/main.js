@@ -6,14 +6,15 @@ let currentLanguage = 'ar';
 // Global scroll management system
 // Comprehensive Scroll Management System - Prevents all scroll freezing issues
 const ScrollManager = {
-    isScrollDisabled: false,
+    disableCount: 0, // Use counter instead of boolean
+    isScrollDisabled: false, // Keep for backward compatibility
     disabledBy: null,
     scrollPosition: 0,
     originalStyles: {},
     
     disableScroll: function(source = 'unknown') {
-        if (!this.isScrollDisabled) {
-            // Store current scroll position
+        if (this.disableCount === 0) {
+            // Only apply styles the first time
             this.scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
             
             // Store original styles
@@ -34,12 +35,19 @@ const ScrollManager = {
             
             this.isScrollDisabled = true;
             this.disabledBy = source;
-            console.log(`Scroll disabled by: ${source} at position: ${this.scrollPosition}`);
         }
+        
+        this.disableCount++;
+        console.log(`Scroll disabled by: ${source}. Count: ${this.disableCount}`);
     },
     
     enableScroll: function(source = 'unknown') {
-        if (this.isScrollDisabled) {
+        this.disableCount--;
+        
+        if (this.disableCount <= 0) {
+            // Only restore styles when the last modal is closed
+            this.disableCount = 0; // Prevent negative
+            
             // Restore original styles
             document.body.style.overflow = this.originalStyles.overflow || 'auto';
             document.body.style.overflowY = this.originalStyles.overflowY || 'auto';
@@ -54,7 +62,9 @@ const ScrollManager = {
             this.disabledBy = null;
             this.scrollPosition = 0;
             this.originalStyles = {};
-            console.log(`Scroll enabled by: ${source}`);
+            console.log(`Scroll enabled by: ${source}. Count is zero.`);
+        } else {
+            console.log(`Scroll not yet enabled by: ${source}. Count: ${this.disableCount}`);
         }
     },
     
@@ -74,6 +84,7 @@ const ScrollManager = {
         });
         
         // Reset state
+        this.disableCount = 0; // Reset counter
         this.isScrollDisabled = false;
         this.disabledBy = null;
         this.scrollPosition = 0;
@@ -155,19 +166,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 // Add periodic scroll health check
-setInterval(function() {
-    if (ScrollManager.isScrollCurrentlyDisabled()) {
-        const disabledBy = ScrollManager.getDisabledBy();
-        console.log(`Scroll currently disabled by: ${disabledBy}`);
-        
-        // Check if any modals are still present
-        const activeModals = document.querySelectorAll('.modal-overlay, .expanded-modal, .fullscreen-image-modal');
-        if (activeModals.length === 0) {
-            console.log('No active modals found but scroll still disabled - forcing enable');
-            ScrollManager.forceEnableScroll();
-        }
-    }
-}, 5000); // Check every 5 seconds
+// Removed setInterval health check - no longer needed with improved ScrollManager
 
 // Add beforeunload event to ensure scroll is restored
 window.addEventListener('beforeunload', function() {
@@ -684,6 +683,12 @@ const ClientManager = {
                                 <input type="text" name="location" placeholder="${currentLanguage === 'ar' ? 'مثال: الرياض، السعودية' : 'e.g., Riyadh, Saudi Arabia'}">
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${currentLanguage === 'ar' ? 'العنوان' : 'Address'}</label>
+                                <input type="text" name="address" placeholder="${currentLanguage === 'ar' ? 'العنوان التفصيلي' : 'Detailed address'}">
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'صورة العميل الرئيسية' : 'Client Thumbnail'}</label>
                             <input type="file" name="thumbnail" accept="image/*">
@@ -780,7 +785,8 @@ const ClientManager = {
             name: formData.get('name'),
             region: formData.get('region') || null,
             salesman_name: formData.get('salesman_name') || null,
-            location: formData.get('location') || null
+            location: formData.get('location') || null,
+            address: formData.get('address') || null
         };
         
         // Collect owner information
@@ -938,11 +944,8 @@ const ClientManager = {
                 this.currentClients = clients;
                 this.currentStatusFilter = statusFilter;
                 
-                // Extract unique regions and populate filter
-                this.populateRegionFilter(clients);
-                
-                // Extract unique salesmen and populate filter
-                this.populateSalesmanFilter(clients);
+                // Load filter data separately (all regions and salesmen)
+                this.loadFilterData();
                 
                 this.displayClients(clients);
                 
@@ -1071,7 +1074,39 @@ const ClientManager = {
                 </button>
             `;
             listElement.appendChild(button);
+            
+            // Setup Intersection Observer to auto-load when button comes into view
+            this.setupLoadMoreObserver(button, type);
         }
+    },
+    
+    setupLoadMoreObserver: function(button, type) {
+        /**Setup Intersection Observer to auto-click load more when it comes into view*/
+        // Disconnect existing observer if any
+        if (this.loadMoreObserver) {
+            this.loadMoreObserver.disconnect();
+        }
+        
+        // Create new observer
+        this.loadMoreObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Button is visible, auto-click it
+                    console.log(`Load more button visible for ${type}, auto-loading...`);
+                    const btn = entry.target.querySelector('.load-more-btn');
+                    if (btn && !btn.disabled) {
+                        btn.click();
+                    }
+                }
+            });
+        }, {
+            root: null, // viewport
+            rootMargin: '200px', // Trigger 200px before button is visible
+            threshold: 0.1
+        });
+        
+        // Start observing
+        this.loadMoreObserver.observe(button);
     },
     
     loadMoreClients: async function() {
@@ -1183,12 +1218,35 @@ const ClientManager = {
         }
     },
     
-    populateRegionFilter: function(clients) {
+    loadFilterData: async function() {
+        /**Load all unique regions and salesmen for filter dropdowns*/
+        console.log('Loading filter data...');
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/filter-data`, {
+                headers: getAuthHeaders()
+            });
+            
+            console.log('Filter data response status:', response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Filter data received:', data);
+                this.populateRegionFilter(data.regions);
+                this.populateSalesmanFilter(data.salesmen);
+            } else {
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                console.error('Failed to load filter data:', response.status, errorData);
+            }
+        } catch (error) {
+            console.error('Error loading filter data:', error);
+        }
+    },
+    
+    populateRegionFilter: function(regions) {
         const regionFilter = document.getElementById('regionFilter');
         if (!regionFilter) return;
         
-        // Extract unique regions
-        const regions = [...new Set(clients.map(client => client.region).filter(region => region && region.trim() !== ''))];
+        // Use the regions array directly (already unique from backend)
         this.allRegions = regions;
         
         // Clear existing options except the first one (All Regions)
@@ -1205,15 +1263,14 @@ const ClientManager = {
         });
     },
     
-    populateSalesmanFilter: function(clients) {
+    populateSalesmanFilter: function(salesmen) {
         const salesmanFilter = document.getElementById('salesmanFilter');
         if (!salesmanFilter) {
             console.error('Salesman filter element not found');
             return;
         }
         
-        // Extract unique salesmen
-        const salesmen = [...new Set(clients.map(client => client.salesman_name).filter(salesman => salesman && salesman.trim() !== ''))];
+        // Use the salesmen array directly (already unique from backend)
         this.allSalesmen = salesmen;
         
         // Clear existing options completely
@@ -1336,37 +1393,82 @@ const ClientManager = {
         }
     },
     
-    filterClients: function(searchTerm = '', selectedRegion = '', selectedSalesman = '') {
-        let filteredClients = this.currentClients;
-        
-        // Filter by search term
+    filterClients: async function(searchTerm = '', selectedRegion = '', selectedSalesman = '') {
+        // If search term is provided, use backend search for ALL clients
         if (searchTerm.trim()) {
-            filteredClients = filteredClients.filter(client => 
-                client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (client.region && client.region.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (client.salesman_name && client.salesman_name.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
+            await this.searchClients(searchTerm, selectedRegion, selectedSalesman);
+        } else {
+            // No search term - filter locally from currentClients
+            let filteredClients = this.currentClients;
+            
+            // Filter by region
+            if (selectedRegion.trim()) {
+                filteredClients = filteredClients.filter(client => client.region === selectedRegion);
+            }
+            
+            // Filter by salesman
+            if (selectedSalesman.trim()) {
+                filteredClients = filteredClients.filter(client => client.salesman_name === selectedSalesman);
+            }
+            
+            this.displayClients(filteredClients);
+            
+            // Update count
+            const statusFilter = document.getElementById('clientStatusFilter');
+            const currentStatus = statusFilter ? statusFilter.value : 'active';
+            this.updateStatusIndicator('clients', currentStatus, filteredClients.length);
+            this.updateClientCount(filteredClients.length);
         }
-        
-        // Filter by region
-        if (selectedRegion.trim()) {
-            filteredClients = filteredClients.filter(client => client.region === selectedRegion);
+    },
+    
+    searchClients: async function(searchTerm, selectedRegion = '', selectedSalesman = '') {
+        /**Search ALL clients using backend API*/
+        try {
+            const statusFilter = document.getElementById('clientStatusFilter');
+            const currentStatus = statusFilter ? statusFilter.value : 'active';
+            
+            let apiUrl = `${API_BASE_URL}/clients/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=100`;
+            if (currentStatus === 'all' || currentStatus === 'inactive') {
+                apiUrl += '&show_all=true';
+            }
+            
+            const response = await fetch(apiUrl, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                let searchResults = data.clients || [];
+                
+                // Apply region and salesman filters locally
+                if (selectedRegion.trim()) {
+                    searchResults = searchResults.filter(client => client.region === selectedRegion);
+                }
+                if (selectedSalesman.trim()) {
+                    searchResults = searchResults.filter(client => client.salesman_name === selectedSalesman);
+                }
+                
+                // Display results
+                this.displayClients(searchResults, false);
+                
+                // Load thumbnails for search results
+                this.loadClientThumbnails(searchResults);
+                
+                // Update count
+                this.updateStatusIndicator('clients', currentStatus, data.total);
+                this.updateClientCount(searchResults.length);
+                
+                // Hide load more button during search
+                const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = 'none';
+                }
+            } else {
+                console.error('Failed to search clients');
+            }
+        } catch (error) {
+            console.error('Error searching clients:', error);
         }
-        
-        // Filter by salesman
-        if (selectedSalesman.trim()) {
-            filteredClients = filteredClients.filter(client => client.salesman_name === selectedSalesman);
-        }
-        
-        this.displayClients(filteredClients);
-        
-        // Update count in status indicator
-        const statusFilter = document.getElementById('clientStatusFilter');
-        const currentStatus = statusFilter ? statusFilter.value : 'active';
-        this.updateStatusIndicator('clients', currentStatus, filteredClients.length);
-        
-        // Update client count display
-        this.updateClientCount(filteredClients.length);
     },
     
     updateStatusIndicator: function(type, statusFilter, count) {
@@ -1793,6 +1895,12 @@ const ClientManager = {
                                 <input type="text" name="location" value="${client.location || ''}" placeholder="${currentLanguage === 'ar' ? 'مثال: الرياض، السعودية' : 'e.g., Riyadh, Saudi Arabia'}">
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>${currentLanguage === 'ar' ? 'العنوان' : 'Address'}</label>
+                                <input type="text" name="address" value="${client.address || ''}" placeholder="${currentLanguage === 'ar' ? 'العنوان التفصيلي' : 'Detailed address'}">
+                            </div>
+                        </div>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'صورة العميل الرئيسية' : 'Client Thumbnail'}</label>
                             ${client.thumbnail ? `
@@ -1919,7 +2027,8 @@ const ClientManager = {
             name: formData.get('name'),
             region: formData.get('region') || null,
             salesman_name: formData.get('salesman_name') || null,
-            location: formData.get('location') || null
+            location: formData.get('location') || null,
+            address: formData.get('address') || null
         };
         
         // Collect owner information
@@ -2312,11 +2421,12 @@ const ProductManager = {
                 this.hasMoreProducts = data.has_more || false;
                 this.totalProducts = data.total || products.length;
                 
+                console.log(`ProductManager: hasMoreProducts = ${this.hasMoreProducts}, total = ${this.totalProducts}`);
+                
                 // Add load more button if there are more products
                 this.addLoadMoreButton('products');
                 
-                // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
-                // this.setupScrollDetection('products');
+                // Note: Infinite scroll now uses Intersection Observer in addLoadMoreButton
             } else {
                 const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
                 console.error('Failed to load products:', response.status, errorData);
@@ -3396,7 +3506,40 @@ const ProductManager = {
                 </button>
             `;
             listElement.appendChild(button);
+            
+            // Setup Intersection Observer to auto-load when button comes into view
+            this.setupLoadMoreObserver(button, type);
         }
+    },
+    
+    setupLoadMoreObserver: function(button, type) {
+        /**Setup Intersection Observer to auto-click load more when it comes into view*/
+        // Disconnect existing observer if any
+        if (this.loadMoreObserver) {
+            this.loadMoreObserver.disconnect();
+        }
+        
+        // Create new observer
+        this.loadMoreObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Button is visible, auto-click it
+                    console.log(`Load more button visible for ${type}, auto-loading...`);
+                    const btn = entry.target.querySelector('.load-more-btn');
+                    if (btn && !btn.disabled) {
+                        btn.click();
+                    }
+                }
+            });
+        }, {
+            root: null, // viewport
+            rootMargin: '200px', // Trigger 200px before button is visible
+            threshold: 0.1
+        });
+        
+        // Start observing
+        this.loadMoreObserver.observe(button);
+        console.log(`Observer started for ProductManager, type: ${type}`);
     }
 };
 
@@ -3741,11 +3884,12 @@ const ReportManager = {
                 this.hasMoreReports = data.has_more || false;
                 this.totalReports = data.total || reports.length;
                 
+                console.log(`ReportManager: hasMoreReports = ${this.hasMoreReports}, total = ${this.totalReports}`);
+                
                 // Add load more button if there are more reports
                 this.addLoadMoreButton('reports');
                 
-                // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
-                // this.setupScrollDetection('reports');
+                // Note: Infinite scroll now uses Intersection Observer in addLoadMoreButton
                 
                 // Update status indicator
                 this.updateStatusIndicator('reports', statusFilter, this.totalReports);
@@ -3758,6 +3902,71 @@ const ReportManager = {
             console.error('Error loading reports:', error);
             const reportsList = document.getElementById('reportsList');
             reportsList.innerHTML = '<p class="no-data">Error loading visit reports</p>';
+        }
+    },
+    
+    filterReports: async function(searchTerm = '') {
+        // If search term is provided, use backend search for ALL reports
+        if (searchTerm && searchTerm.trim()) {
+            await this.searchReports(searchTerm.trim());
+        } else {
+            // No search term - reload normal reports
+            const statusFilter = document.getElementById('reportStatusFilter');
+            const currentStatus = statusFilter ? statusFilter.value : 'active';
+            await this.loadReports(currentStatus);
+        }
+    },
+    
+    searchReports: async function(searchTerm) {
+        /**Search ALL reports by client name using backend API*/
+        try {
+            const statusFilter = document.getElementById('reportStatusFilter');
+            const currentStatus = statusFilter ? statusFilter.value : 'active';
+            
+            let apiUrl = `${API_BASE_URL}/visit-reports/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=100`;
+            if (currentStatus === 'all' || currentStatus === 'inactive') {
+                apiUrl += '&show_all=true';
+            }
+            
+            const response = await fetch(apiUrl, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const searchResults = data.reports || [];
+                
+                const reportsList = document.getElementById('reportsList');
+                if (!reportsList) return;
+                
+                // Display results
+                if (searchResults.length === 0) {
+                    reportsList.innerHTML = `
+                        <div class="empty-state">
+                            <h3>${currentLanguage === 'ar' ? 'لم يتم العثور على تقارير' : 'No reports found'}</h3>
+                            <p>${currentLanguage === 'ar' ? 'لا توجد تقارير تطابق بحثك' : 'No reports match your search'}</p>
+                        </div>
+                    `;
+                } else {
+                    // Store and display search results
+                    this.currentReports = searchResults;
+                    this.totalReports = data.total;
+                    this.displayReports(searchResults, false);
+                }
+                
+                // Update count
+                this.updateStatusIndicator('reports', currentStatus, data.total);
+                
+                // Hide load more button during search
+                const loadMoreBtn = document.querySelector('#reportsList .load-more-button');
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = 'none';
+                }
+            } else {
+                console.error('Failed to search reports');
+            }
+        } catch (error) {
+            console.error('Error searching reports:', error);
         }
     },
     
@@ -5196,7 +5405,40 @@ const ReportManager = {
                 </button>
             `;
             listElement.appendChild(button);
+            
+            // Setup Intersection Observer to auto-load when button comes into view
+            this.setupLoadMoreObserver(button, type);
         }
+    },
+    
+    setupLoadMoreObserver: function(button, type) {
+        /**Setup Intersection Observer to auto-click load more when it comes into view*/
+        // Disconnect existing observer if any
+        if (this.loadMoreObserver) {
+            this.loadMoreObserver.disconnect();
+        }
+        
+        // Create new observer
+        this.loadMoreObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Button is visible, auto-click it
+                    console.log(`Load more button visible for ${type}, auto-loading...`);
+                    const btn = entry.target.querySelector('.load-more-btn');
+                    if (btn && !btn.disabled) {
+                        btn.click();
+                    }
+                }
+            });
+        }, {
+            root: null, // viewport
+            rootMargin: '200px', // Trigger 200px before button is visible
+            threshold: 0.1
+        });
+        
+        // Start observing
+        this.loadMoreObserver.observe(button);
+        console.log(`Observer started for ReportManager, type: ${type}`);
     }
 };
 
@@ -5266,7 +5508,15 @@ function setupClientSearch() {
 
 // Set up status filter functionality for reports
 function setupReportSearch() {
+    const reportSearchInput = document.getElementById('reportSearch');
     const statusFilter = document.getElementById('reportStatusFilter');
+    
+    if (reportSearchInput) {
+        reportSearchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value;
+            ReportManager.filterReports(searchTerm);
+        });
+    }
     
     if (statusFilter) {
         // Load saved filter preference
@@ -5277,6 +5527,10 @@ function setupReportSearch() {
             const selectedStatus = e.target.value;
             // Save filter preference
             localStorage.setItem('reportStatusFilter', selectedStatus);
+            // Clear search when changing status
+            if (reportSearchInput) {
+                reportSearchInput.value = '';
+            }
             // Reload reports with new status filter
             ReportManager.loadReports(selectedStatus);
         });
@@ -5284,31 +5538,61 @@ function setupReportSearch() {
 }
 
 // Add search functionality to ProductManager
-ProductManager.filterProducts = function(searchTerm) {
-    if (!this.currentProducts) return;
-    
-    const productsList = document.getElementById('productsList');
-    if (!productsList) return;
-    
-    let filteredProducts = this.currentProducts;
-    
-    if (searchTerm) {
-        filteredProducts = this.currentProducts.filter(product => 
-            product.name.toLowerCase().includes(searchTerm)
-        );
-    }
-    
-    // Display filtered products
-    if (filteredProducts.length === 0 && searchTerm) {
-        productsList.innerHTML = `
-            <div class="empty-state">
-                <h3>${currentLanguage === 'ar' ? 'لم يتم العثور على منتجات' : 'No products found'}</h3>
-                <p>${currentLanguage === 'ar' ? 'لا توجد منتجات تطابق بحثك' : 'No products match your search'}</p>
-            </div>
-        `;
+ProductManager.filterProducts = async function(searchTerm) {
+    // If search term is provided, use backend search for ALL products
+    if (searchTerm && searchTerm.trim()) {
+        await this.searchProducts(searchTerm.trim());
     } else {
-        // Use the existing display logic from loadProducts
-        this.displayFilteredProducts(filteredProducts);
+        // No search term - show all current products
+        this.displayProducts(this.currentProducts, false);
+        this.updateStatusIndicator('products', 'all', this.totalProducts);
+    }
+};
+
+ProductManager.searchProducts = async function(searchTerm) {
+    /**Search ALL products using backend API*/
+    try {
+        const apiUrl = `${API_BASE_URL}/products/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=100`;
+        
+        const response = await fetch(apiUrl, {
+            headers: getAuthHeaders()
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const searchResults = data.products || [];
+            
+            const productsList = document.getElementById('productsList');
+            if (!productsList) return;
+            
+            // Display results
+            if (searchResults.length === 0) {
+                productsList.innerHTML = `
+                    <div class="empty-state">
+                        <h3>${currentLanguage === 'ar' ? 'لم يتم العثور على منتجات' : 'No products found'}</h3>
+                        <p>${currentLanguage === 'ar' ? 'لا توجد منتجات تطابق بحثك' : 'No products match your search'}</p>
+                    </div>
+                `;
+            } else {
+                this.displayProducts(searchResults, false);
+                
+                // Load thumbnails for search results
+                this.loadProductThumbnails(searchResults);
+            }
+            
+            // Update count
+            this.updateStatusIndicator('products', 'all', data.total);
+            
+            // Hide load more button during search
+            const loadMoreBtn = document.querySelector('#productsList .load-more-button');
+            if (loadMoreBtn) {
+                loadMoreBtn.style.display = 'none';
+            }
+        } else {
+            console.error('Failed to search products');
+        }
+    } catch (error) {
+        console.error('Error searching products:', error);
     }
 };
 
