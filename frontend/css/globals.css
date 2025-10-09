@@ -5,6 +5,63 @@
     box-sizing: border-box;
 }
 
+/* Load More Button Styles */
+.load-more-button {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    padding: 20px;
+}
+
+.load-more-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--primary-color), #7BC4A8);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+    min-width: 160px;
+    justify-content: center;
+}
+
+.load-more-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    background: linear-gradient(135deg, #7BC4A8, var(--primary-color));
+}
+
+.load-more-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.loading-spinner {
+    display: flex;
+    gap: 4px;
+}
+
+.loading-spinner .spinner-ring {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 :root {
     --primary-color: #97D2C0;
     --secondary-color: #D0A74E;

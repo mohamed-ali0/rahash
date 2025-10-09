@@ -965,8 +965,19 @@ const ClientManager = {
                 // Load thumbnails for clients that have them
                 this.loadClientThumbnails(clients);
                 
+                // Store pagination info for infinite scroll
+                this.currentPage = data.page || 1;
+                this.hasMoreClients = data.has_more || false;
+                this.totalClients = data.total || clients.length;
+                
+                // Add load more button if there are more clients
+                this.addLoadMoreButton('clients');
+                
+                // Add scroll detection for auto-loading
+                this.setupScrollDetection('clients');
+                
                 // Update status indicator
-                this.updateStatusIndicator('clients', statusFilter, clients.length);
+                this.updateStatusIndicator('clients', statusFilter, this.totalClients);
             } else {
                 console.error('Failed to load clients');
                 clientsList.innerHTML = '<p class="no-data">Failed to load clients</p>';
@@ -1046,6 +1057,139 @@ const ClientManager = {
         }
     },
     
+    addLoadMoreButton: function(type) {
+        /**Add load more button at the bottom of the list*/
+        const listElement = document.getElementById(`${type}List`);
+        if (!listElement) return;
+        
+        // Remove existing load more button
+        const existingButton = listElement.querySelector('.load-more-button');
+        if (existingButton) {
+            existingButton.remove();
+        }
+        
+        // Add load more button if there are more items
+        const hasMore = type === 'clients' ? this.hasMoreClients : 
+                       type === 'products' ? this.hasMoreProducts : 
+                       this.hasMoreReports;
+        
+        if (hasMore) {
+            const button = document.createElement('div');
+            button.className = 'load-more-button';
+            button.innerHTML = `
+                <button class="btn btn-secondary load-more-btn" onclick="ClientManager.loadMore${type.charAt(0).toUpperCase() + type.slice(1)}()">
+                    <div class="loading-spinner" style="display: none;">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <span class="button-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
+                </button>
+            `;
+            listElement.appendChild(button);
+        }
+    },
+    
+    loadMoreClients: async function() {
+        /**Load next page of clients for infinite scroll*/
+        if (!this.hasMoreClients) return;
+        
+        const button = document.querySelector('.load-more-btn');
+        const spinner = button.querySelector('.loading-spinner');
+        const buttonText = button.querySelector('.button-text');
+        
+        // Show loading state
+        button.disabled = true;
+        spinner.style.display = 'block';
+        buttonText.textContent = currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...';
+        
+        try {
+            const nextPage = this.currentPage + 1;
+            let apiUrl = `${API_BASE_URL}/clients/list?page=${nextPage}`;
+            if (this.currentStatusFilter === 'all' || this.currentStatusFilter === 'inactive') {
+                apiUrl += '&show_all=true';
+            }
+            
+            const response = await fetch(apiUrl, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const newClients = data.clients || data;
+                
+                // Append new clients to existing list
+                this.currentClients = [...this.currentClients, ...newClients];
+                
+                // Update pagination info
+                this.currentPage = data.page;
+                this.hasMoreClients = data.has_more;
+                
+                // Display new clients
+                this.displayClients(newClients, true); // true = append mode
+                
+                // Load thumbnails for new clients
+                this.loadClientThumbnails(newClients);
+                
+                // Update load more button
+                this.addLoadMoreButton('clients');
+            }
+        } catch (error) {
+            console.error('Error loading more clients:', error);
+        } finally {
+            // Hide loading state
+            button.disabled = false;
+            spinner.style.display = 'none';
+            buttonText.textContent = currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More';
+        }
+    },
+    
+    setupScrollDetection: function(type) {
+        /**Setup scroll detection to auto-trigger load more when user scrolls to bottom*/
+        const listElement = document.getElementById(`${type}List`);
+        if (!listElement) return;
+        
+        // Remove existing scroll listener
+        if (this.scrollListener) {
+            window.removeEventListener('scroll', this.scrollListener);
+        }
+        
+        this.scrollListener = () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            
+            // Check if user is near bottom (within 100px)
+            if (scrollTop + windowHeight >= documentHeight - 100) {
+                const hasMore = type === 'clients' ? this.hasMoreClients : 
+                               type === 'products' ? this.hasMoreProducts : 
+                               this.hasMoreReports;
+                
+                if (hasMore) {
+                    // Auto-trigger load more
+                    if (type === 'clients') {
+                        this.loadMoreClients();
+                    } else if (type === 'products') {
+                        this.loadMoreProducts();
+                    } else if (type === 'reports') {
+                        this.loadMoreReports();
+                    }
+                }
+            }
+        };
+        
+        // Add scroll listener
+        window.addEventListener('scroll', this.scrollListener, { passive: true });
+    },
+    
+    cleanupScrollDetection: function() {
+        /**Clean up scroll listeners when switching sections*/
+        if (this.scrollListener) {
+            window.removeEventListener('scroll', this.scrollListener);
+            this.scrollListener = null;
+        }
+    },
+    
     populateRegionFilter: function(clients) {
         const regionFilter = document.getElementById('regionFilter');
         if (!regionFilter) return;
@@ -1099,9 +1243,9 @@ const ClientManager = {
         console.log('Salesman filter populated with:', salesmen);
     },
     
-    displayClients: function(clients) {
+    displayClients: function(clients, append = false) {
         const clientsList = document.getElementById('clientsList');
-        if (clients.length === 0) {
+        if (clients.length === 0 && !append) {
             clientsList.innerHTML = `
                 <div class="empty-state">
                     <h3>${currentLanguage === 'ar' ? 'لا توجد عملاء' : 'No Clients'}</h3>
@@ -1110,7 +1254,7 @@ const ClientManager = {
             `;
         } else {
             // Display clients cards with edit/delete buttons
-            clientsList.innerHTML = clients.map(client => {
+            const cardsHTML = clients.map(client => {
                 const isInactive = client.is_active === false;
                 const cardClass = `client-card ${isInactive ? 'inactive' : ''}`;
                 
@@ -1171,6 +1315,14 @@ const ClientManager = {
                     </div>
                 `;
             }).join('');
+            
+            if (append) {
+                // Append new cards to existing list
+                clientsList.insertAdjacentHTML('beforeend', cardsHTML);
+            } else {
+                // Replace all content
+                clientsList.innerHTML = cardsHTML;
+            }
         }
         
         // Update client count display
@@ -2159,6 +2311,17 @@ const ProductManager = {
                 
                 // Load thumbnails for products that have them
                 this.loadProductThumbnails(products);
+                
+                // Store pagination info for infinite scroll
+                this.currentProductPage = data.page || 1;
+                this.hasMoreProducts = data.has_more || false;
+                this.totalProducts = data.total || products.length;
+                
+                // Add load more button if there are more products
+                this.addLoadMoreButton('products');
+                
+                // Add scroll detection for auto-loading
+                this.setupScrollDetection('products');
             } else {
                 console.error('Failed to load products');
                 productsList.innerHTML = '<p class="no-data">Failed to load products</p>';
@@ -2238,6 +2401,55 @@ const ProductManager = {
         }
     },
     
+    loadMoreProducts: async function() {
+        /**Load next page of products for infinite scroll*/
+        if (!this.hasMoreProducts) return;
+        
+        const button = document.querySelector('.load-more-btn');
+        const spinner = button.querySelector('.loading-spinner');
+        const buttonText = button.querySelector('.button-text');
+        
+        // Show loading state
+        button.disabled = true;
+        spinner.style.display = 'block';
+        buttonText.textContent = currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...';
+        
+        try {
+            const nextPage = this.currentProductPage + 1;
+            const response = await fetch(`${API_BASE_URL}/products/list?page=${nextPage}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const newProducts = data.products || data;
+                
+                // Append new products to existing list
+                this.currentProducts = [...this.currentProducts, ...newProducts];
+                
+                // Update pagination info
+                this.currentProductPage = data.page;
+                this.hasMoreProducts = data.has_more;
+                
+                // Display new products
+                this.displayProducts(newProducts, true); // true = append mode
+                
+                // Load thumbnails for new products
+                this.loadProductThumbnails(newProducts);
+                
+                // Update load more button
+                this.addLoadMoreButton('products');
+            }
+        } catch (error) {
+            console.error('Error loading more products:', error);
+        } finally {
+            // Hide loading state
+            button.disabled = false;
+            spinner.style.display = 'none';
+            buttonText.textContent = currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More';
+        }
+    },
+    
     updateUIPermissions: function(products) {
         const addProductBtn = document.getElementById('addProductBtn');
         
@@ -2278,12 +2490,14 @@ const ProductManager = {
         setupUserInterface();
     },
     
-    displayProducts: function(products) {
-        // Store products data for editing
-        this.currentProducts = products;
+    displayProducts: function(products, append = false) {
+        // Store products data for editing (only if not append mode)
+        if (!append) {
+            this.currentProducts = products;
+        }
         
         const productsList = document.getElementById('productsList');
-        if (products.length === 0) {
+        if (products.length === 0 && !append) {
             productsList.innerHTML = `
                 <div class="empty-state">
                     <h3>${currentLanguage === 'ar' ? 'لا توجد منتجات' : 'No Products'}</h3>
@@ -2335,6 +2549,98 @@ const ProductManager = {
                     ` : ''}
                 </div>
             `).join('');
+            
+            if (append) {
+                // Append new cards to existing list
+                productsList.insertAdjacentHTML('beforeend', products.map(product => `
+                    <div class="product-card" onclick="ProductManager.viewExpanded(${product.id})">
+                        <div class="product-image" data-product-id="${product.id}">
+                            ${product.has_thumbnail ? 
+                                `<div class="thumbnail-loading">⏳</div>` : 
+                                `<img src="/logo.png" alt="${product.name}" class="logo-fallback">`
+                            }
+                        </div>
+                        <h3>${product.name}</h3>
+                        <div class="prices-grid">
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر العميل (شامل)' : 'Client Price (Tax Inc.)'}</div>
+                                <div class="price-value">${product.taxed_price_store || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر العميل (بدون)' : 'Client Price (No Tax)'}</div>
+                                <div class="price-value">${product.untaxed_price_store || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر المحل (شامل)' : 'Store Price (Tax Inc.)'}</div>
+                                <div class="price-value">${product.taxed_price_client || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر المحل (بدون)' : 'Store Price (No Tax)'}</div>
+                                <div class="price-value">${product.untaxed_price_client || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                        </div>
+                        ${product.can_edit ? `
+                            <div class="product-actions" onclick="event.stopPropagation()">
+                                <button class="btn-icon-stylish btn-edit-stylish" onclick="ProductManager.editProduct(${product.id})" title="${currentLanguage === 'ar' ? 'تعديل المنتج' : 'Edit Product'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn-icon-stylish btn-delete-stylish" onclick="ProductManager.deleteProduct(${product.id})" title="${currentLanguage === 'ar' ? 'حذف المنتج' : 'Delete Product'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join(''));
+            } else {
+                // Replace all content
+                productsList.innerHTML = products.map(product => `
+                    <div class="product-card" onclick="ProductManager.viewExpanded(${product.id})">
+                        <div class="product-image" data-product-id="${product.id}">
+                            ${product.has_thumbnail ? 
+                                `<div class="thumbnail-loading">⏳</div>` : 
+                                `<img src="/logo.png" alt="${product.name}" class="logo-fallback">`
+                            }
+                        </div>
+                        <h3>${product.name}</h3>
+                        <div class="prices-grid">
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر العميل (شامل)' : 'Client Price (Tax Inc.)'}</div>
+                                <div class="price-value">${product.taxed_price_store || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر العميل (بدون)' : 'Client Price (No Tax)'}</div>
+                                <div class="price-value">${product.untaxed_price_store || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر المحل (شامل)' : 'Store Price (Tax Inc.)'}</div>
+                                <div class="price-value">${product.taxed_price_client || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${currentLanguage === 'ar' ? 'سعر المحل (بدون)' : 'Store Price (No Tax)'}</div>
+                                <div class="price-value">${product.untaxed_price_client || '0.00'} ${currentLanguage === 'ar' ? 'ريال' : 'SAR'}</div>
+                            </div>
+                        </div>
+                        ${product.can_edit ? `
+                            <div class="product-actions" onclick="event.stopPropagation()">
+                                <button class="btn-icon-stylish btn-edit-stylish" onclick="ProductManager.editProduct(${product.id})" title="${currentLanguage === 'ar' ? 'تعديل المنتج' : 'Edit Product'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                    </svg>
+                                </button>
+                                <button class="btn-icon-stylish btn-delete-stylish" onclick="ProductManager.deleteProduct(${product.id})" title="${currentLanguage === 'ar' ? 'حذف المنتج' : 'Delete Product'}">
+                                    <svg viewBox="0 0 24 24" width="16" height="16">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            }
         }
     },
     
@@ -3399,8 +3705,19 @@ const ReportManager = {
                 // Display cards immediately (without images)
                 this.displayReportsLazy(reports);
                 
+                // Store pagination info for infinite scroll
+                this.currentReportPage = data.page || 1;
+                this.hasMoreReports = data.has_more || false;
+                this.totalReports = data.total || reports.length;
+                
+                // Add load more button if there are more reports
+                this.addLoadMoreButton('reports');
+                
+                // Add scroll detection for auto-loading
+                this.setupScrollDetection('reports');
+                
                 // Update status indicator
-                this.updateStatusIndicator('reports', statusFilter, reports.length);
+                this.updateStatusIndicator('reports', statusFilter, this.totalReports);
             } else {
                 console.error('Failed to load reports');
                 reportsList.innerHTML = '<p class="no-data">Failed to load visit reports</p>';
@@ -3412,10 +3729,10 @@ const ReportManager = {
         }
     },
     
-    displayReportsLazy: function(reports) {
+    displayReportsLazy: function(reports, append = false) {
         // Display report cards immediately WITHOUT images (FAST rendering)
         const reportsList = document.getElementById('reportsList');
-        if (reports.length === 0) {
+        if (reports.length === 0 && !append) {
             reportsList.innerHTML = `
                 <div class="empty-state">
                     <h3>${currentLanguage === 'ar' ? 'لا توجد تقارير' : 'No Reports'}</h3>
@@ -3424,13 +3741,13 @@ const ReportManager = {
             `;
         } else {
             // Use old displayReports function for consistent card design
-            this.displayReports(reports);
+            this.displayReports(reports, append);
         }
     },
     
-    displayReports: function(reports) {
+    displayReports: function(reports, append = false) {
         const reportsList = document.getElementById('reportsList');
-        if (reports.length === 0) {
+        if (reports.length === 0 && !append) {
             reportsList.innerHTML = `
                 <div class="empty-state">
                     <h3>${currentLanguage === 'ar' ? 'لا توجد تقارير' : 'No Reports'}</h3>
@@ -3439,7 +3756,7 @@ const ReportManager = {
             `;
         } else {
             // Display reports cards
-            reportsList.innerHTML = reports.map(report => {
+            const cardsHTML = reports.map(report => {
                 const visitDate = ReportManager.formatReportDate(report.visit_date);
                 
                 const isInactive = report.is_active === false;
@@ -3477,6 +3794,14 @@ const ReportManager = {
                     </div>
                 `;
             }).join('');
+            
+            if (append) {
+                // Append new cards to existing list
+                reportsList.insertAdjacentHTML('beforeend', cardsHTML);
+            } else {
+                // Replace all content
+                reportsList.innerHTML = cardsHTML;
+            }
         }
     },
 
@@ -3497,6 +3822,57 @@ const ReportManager = {
             };
         } catch (e) {
             return { line1: dateStr, line2: '', full: dateStr };
+        }
+    },
+    
+    loadMoreReports: async function() {
+        /**Load next page of reports for infinite scroll*/
+        if (!this.hasMoreReports) return;
+        
+        const button = document.querySelector('.load-more-btn');
+        const spinner = button.querySelector('.loading-spinner');
+        const buttonText = button.querySelector('.button-text');
+        
+        // Show loading state
+        button.disabled = true;
+        spinner.style.display = 'block';
+        buttonText.textContent = currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...';
+        
+        try {
+            const nextPage = this.currentReportPage + 1;
+            let apiUrl = `${API_BASE_URL}/visit-reports/list?page=${nextPage}`;
+            if (this.currentStatusFilter === 'all' || this.currentStatusFilter === 'inactive') {
+                apiUrl += '&show_all=true';
+            }
+            
+            const response = await fetch(apiUrl, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const newReports = data.reports || data;
+                
+                // Append new reports to existing list
+                this.currentReports = [...this.currentReports, ...newReports];
+                
+                // Update pagination info
+                this.currentReportPage = data.page;
+                this.hasMoreReports = data.has_more;
+                
+                // Display new reports
+                this.displayReportsLazy(newReports, true); // true = append mode
+                
+                // Update load more button
+                this.addLoadMoreButton('reports');
+            }
+        } catch (error) {
+            console.error('Error loading more reports:', error);
+        } finally {
+            // Hide loading state
+            button.disabled = false;
+            spinner.style.display = 'none';
+            buttonText.textContent = currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More';
         }
     },
     

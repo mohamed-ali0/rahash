@@ -1137,43 +1137,36 @@ def get_dashboard_stats(current_user):
         current_month = current_date.month
         current_year = current_date.year
         
-        # Use raw SQL for maximum speed - single query with all counts
+        # Use simple COUNT queries for maximum speed
         if current_user.role == UserRole.SUPER_ADMIN:
-            query = text("""
-                SELECT 
-                    (SELECT COUNT(*) FROM clients WHERE is_active = 1) as clients,
-                    (SELECT COUNT(*) FROM products) as products,
-                    (SELECT COUNT(*) FROM visit_reports 
-                     WHERE is_active = 1 
-                     AND strftime('%m', visit_date) = :month 
-                     AND strftime('%Y', visit_date) = :year) as reports
-            """)
+            # Super admin - count all active clients, all products, and monthly reports
+            active_clients_count = db.session.execute(text("SELECT COUNT(*) FROM clients WHERE is_active = 1")).scalar()
+            total_products_count = db.session.execute(text("SELECT COUNT(*) FROM products")).scalar()
+            monthly_reports_count = db.session.execute(text("""
+                SELECT COUNT(*) FROM visit_reports 
+                WHERE is_active = 1 
+                AND strftime('%m', visit_date) = :month 
+                AND strftime('%Y', visit_date) = :year
+            """), {'month': f'{current_month:02d}', 'year': str(current_year)}).scalar()
         else:
-            query = text("""
-                SELECT 
-                    (SELECT COUNT(*) FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id) as clients,
-                    (SELECT COUNT(*) FROM products) as products,
-                    (SELECT COUNT(*) FROM visit_reports 
-                     WHERE user_id = :user_id 
-                     AND is_active = 1 
-                     AND strftime('%m', visit_date) = :month 
-                     AND strftime('%Y', visit_date) = :year) as reports
-            """)
-        
-        # Execute query
-        result = db.session.execute(
-            query, 
-            {
-                'user_id': current_user.id,
-                'month': f'{current_month:02d}',
-                'year': str(current_year)
-            }
-        ).fetchone()
+            # Regular user - count only their clients and reports
+            active_clients_count = db.session.execute(text("""
+                SELECT COUNT(*) FROM clients 
+                WHERE is_active = 1 AND assigned_user_id = :user_id
+            """), {'user_id': current_user.id}).scalar()
+            total_products_count = db.session.execute(text("SELECT COUNT(*) FROM products")).scalar()
+            monthly_reports_count = db.session.execute(text("""
+                SELECT COUNT(*) FROM visit_reports 
+                WHERE user_id = :user_id 
+                AND is_active = 1 
+                AND strftime('%m', visit_date) = :month 
+                AND strftime('%Y', visit_date) = :year
+            """), {'user_id': current_user.id, 'month': f'{current_month:02d}', 'year': str(current_year)}).scalar()
         
         return jsonify({
-            'total_clients': result[0] if result else 0,
-            'total_products': result[1] if result else 0,
-            'monthly_reports': result[2] if result else 0
+            'total_clients': active_clients_count,
+            'total_products': total_products_count,
+            'monthly_reports': monthly_reports_count
         }), 200
         
     except Exception as e:
