@@ -234,7 +234,7 @@ window.addEventListener('resize', function() {
     initializeSidebar();
 });
 // Dynamic API URL - works for both localhost and deployed server
-const API_BASE_URL = `${window.location.protocol}//${window.location.host}/api`;
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5009/api`;
 
 // DOM Content Loaded Event
 document.addEventListener('DOMContentLoaded', function() {
@@ -558,7 +558,9 @@ async function loadDashboardData() {
 // Check authentication
 function checkAuthentication() {
     const token = localStorage.getItem('authToken');
+    console.log('Checking authentication, token exists:', !!token);
     if (!token) {
+        console.log('No token found, redirecting to login');
         // Redirect to login if not authenticated
         window.location.href = '/login';
         return false;
@@ -2285,6 +2287,8 @@ const ProductManager = {
             `;
             
             // Use lightweight list endpoint WITHOUT images
+            console.log('Loading products from:', `${API_BASE_URL}/products/list`);
+            console.log('Auth headers:', getAuthHeaders());
             const response = await fetch(`${API_BASE_URL}/products/list`, {
                 headers: getAuthHeaders()
             });
@@ -2314,8 +2318,9 @@ const ProductManager = {
                 // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
                 // this.setupScrollDetection('products');
             } else {
-                console.error('Failed to load products');
-                productsList.innerHTML = '<p class="no-data">Failed to load products</p>';
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                console.error('Failed to load products:', response.status, errorData);
+                productsList.innerHTML = `<p class="no-data">Error loading products: ${errorData.message || 'Unknown error'}</p>`;
             }
         } catch (error) {
             console.error('Error loading products:', error);
@@ -3359,6 +3364,39 @@ const ProductManager = {
             console.error('Error deleting image:', error);
             alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Connection error');
         }
+    },
+    
+    addLoadMoreButton: function(type) {
+        /**Add load more button at the bottom of the list*/
+        const listElement = document.getElementById(`${type}List`);
+        if (!listElement) return;
+        
+        // Remove existing load more button
+        const existingButton = listElement.querySelector('.load-more-button');
+        if (existingButton) {
+            existingButton.remove();
+        }
+        
+        // Add load more button if there are more items
+        const hasMore = type === 'clients' ? this.hasMoreClients : 
+                       type === 'products' ? this.hasMoreProducts : 
+                       this.hasMoreReports;
+        
+        if (hasMore) {
+            const button = document.createElement('div');
+            button.className = 'load-more-button';
+            button.innerHTML = `
+                <button class="btn btn-secondary load-more-btn" onclick="ProductManager.loadMoreProducts()">
+                    <span class="btn-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
+                    <div class="btn-spinner" style="display: none;">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                </button>
+            `;
+            listElement.appendChild(button);
+        }
     }
 };
 
@@ -3675,6 +3713,8 @@ const ReportManager = {
                 apiUrl += '?show_all=true';
             }
             
+            console.log('Loading reports from:', apiUrl);
+            console.log('Auth headers:', getAuthHeaders());
             const response = await fetch(apiUrl, {
                 headers: getAuthHeaders()
             });
@@ -3710,8 +3750,9 @@ const ReportManager = {
                 // Update status indicator
                 this.updateStatusIndicator('reports', statusFilter, this.totalReports);
             } else {
-                console.error('Failed to load reports');
-                reportsList.innerHTML = '<p class="no-data">Failed to load visit reports</p>';
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                console.error('Failed to load reports:', response.status, errorData);
+                reportsList.innerHTML = `<p class="no-data">Error loading reports: ${errorData.message || 'Unknown error'}</p>`;
             }
         } catch (error) {
             console.error('Error loading reports:', error);
@@ -5122,6 +5163,39 @@ const ReportManager = {
                 const removeBtn = note.querySelector('.remove-note-btn');
                 if (removeBtn) removeBtn.style.display = 'inline-block';
             });
+        }
+    },
+    
+    addLoadMoreButton: function(type) {
+        /**Add load more button at the bottom of the list*/
+        const listElement = document.getElementById(`${type}List`);
+        if (!listElement) return;
+        
+        // Remove existing load more button
+        const existingButton = listElement.querySelector('.load-more-button');
+        if (existingButton) {
+            existingButton.remove();
+        }
+        
+        // Add load more button if there are more items
+        const hasMore = type === 'clients' ? this.hasMoreClients : 
+                       type === 'products' ? this.hasMoreProducts : 
+                       this.hasMoreReports;
+        
+        if (hasMore) {
+            const button = document.createElement('div');
+            button.className = 'load-more-button';
+            button.innerHTML = `
+                <button class="btn btn-secondary load-more-btn" onclick="ReportManager.loadMoreReports()">
+                    <span class="btn-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
+                    <div class="btn-spinner" style="display: none;">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                </button>
+            `;
+            listElement.appendChild(button);
         }
     }
 };
