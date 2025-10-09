@@ -3908,10 +3908,22 @@ const ReportManager = {
                             <div class="products-list">
                                 ${report.products.map((product, index) => {
                                     // Check if displayed price matches our internal store price within tolerance
+                                    // Tolerance only applies when displayed price is LESS than our price
+                                    // If displayed price is HIGHER than our price, it's always a mismatch (no tolerance)
                                     const storePrice = product.taxed_price_store;
                                     const displayedPrice = product.displayed_price;
                                     const tolerance = SettingsManager.getPriceTolerance();
-                                    const priceMatches = storePrice && displayedPrice && Math.abs(storePrice - displayedPrice) <= tolerance;
+                                    
+                                    let priceMatches = true;
+                                    if (storePrice && displayedPrice) {
+                                        if (displayedPrice > storePrice) {
+                                            // Displayed price is higher than ours - ALWAYS a mismatch
+                                            priceMatches = false;
+                                        } else {
+                                            // Displayed price is lower - allow tolerance
+                                            priceMatches = (storePrice - displayedPrice) <= tolerance;
+                                        }
+                                    }
                                     const priceStyle = storePrice && displayedPrice && !priceMatches ? 'color: #e74c3c; font-weight: bold;' : '';
                                     
                                     return `

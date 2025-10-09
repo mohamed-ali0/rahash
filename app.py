@@ -630,9 +630,13 @@ def get_client_last_report_summary(current_user, client_id):
         }
         
         # Check for price issues in products
+        # Tolerance only applies when displayed price is LESS than our price
+        # If displayed price is HIGHER than our price, it's always a mismatch (no tolerance)
         for product in last_report.products:
             if product.displayed_price and product.product.taxed_price_store:
-                price_diff = abs(product.displayed_price - product.product.taxed_price_store)
+                displayed_price = float(product.displayed_price)
+                our_price = float(product.product.taxed_price_store)
+                
                 # Load price tolerance from settings
                 try:
                     with open('sys_settings.json', 'r', encoding='utf-8') as f:
@@ -641,7 +645,16 @@ def get_client_last_report_summary(current_user, client_id):
                 except:
                     price_tolerance = 1.0
                 
-                if price_diff > price_tolerance:
+                # Check for price mismatch
+                has_price_issue = False
+                if displayed_price > our_price:
+                    # Displayed price is higher than ours - ALWAYS a mismatch
+                    has_price_issue = True
+                else:
+                    # Displayed price is lower - allow tolerance
+                    has_price_issue = (our_price - displayed_price) > price_tolerance
+                
+                if has_price_issue:
                     summary['priceIssues'] = True
                     break
         

@@ -217,6 +217,35 @@
             border-radius: 8px;
         }
         
+        /* Client Signature Section */
+        .signature-section {
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 2px solid #CA9E3F;
+            page-break-inside: avoid;
+        }
+        
+        .signature-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-end;
+            gap: 20px;
+        }
+        
+        .signature-label {
+            font-size: 15.4pt;
+            font-weight: bold;
+            color: #23407C;
+            margin-bottom: 10px;
+        }
+        
+        .signature-line {
+            border-bottom: 2px solid #23407C;
+            width: 300px;
+            height: 60px;
+            display: inline-block;
+        }
+        
         /* Control buttons */
         .controls {
             margin-top: 30px;
@@ -397,6 +426,12 @@
             </table>
         </div>
         
+        <!-- Client Signature Section -->
+        <div class="signature-section">
+            <div class="signature-label">توقيع العميل:</div>
+            <div class="signature-line"></div>
+        </div>
+        
         <!-- Control Buttons -->
         <div class="controls">
             <button class="btn btn-print" onclick="window.print()">🖨️ طباعة</button>
@@ -509,6 +544,8 @@
                     const row = tbody.insertRow();
                     
                     // Check for price mismatch using price tolerance
+                    // Tolerance only applies when displayed price is LESS than our price
+                    // If displayed price is HIGHER than our price, it's always a mismatch (no tolerance)
                     const ourPrice = product.our_price_raw;
                     const displayedPrice = product.displayed_price_raw;
                     const tolerance = parseFloat(data.price_tolerance) || 1.0;
@@ -516,7 +553,13 @@
                     let hasPriceMismatch = false;
                     if (ourPrice !== null && ourPrice !== undefined && 
                         displayedPrice !== null && displayedPrice !== undefined) {
-                        hasPriceMismatch = Math.abs(ourPrice - displayedPrice) > tolerance;
+                        if (displayedPrice > ourPrice) {
+                            // Displayed price is higher than ours - ALWAYS a mismatch (no tolerance)
+                            hasPriceMismatch = true;
+                        } else {
+                            // Displayed price is lower - allow tolerance
+                            hasPriceMismatch = (ourPrice - displayedPrice) > tolerance;
+                        }
                     }
                     
                     const priceStyle = hasPriceMismatch ? 'style="color: #8B0000; font-weight: bold;"' : '';
