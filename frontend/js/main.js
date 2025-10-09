@@ -1243,34 +1243,58 @@ const ClientManager = {
         if (searchTerm.trim()) {
             await this.searchClients(searchTerm, selectedRegion, selectedSalesman);
         } else {
-            // No search term - filter locally from currentClients
-            let filteredClients = this.currentClients;
-            
-            // Filter by region
-            if (selectedRegion.trim()) {
-                filteredClients = filteredClients.filter(client => client.region === selectedRegion);
-            }
-            
-            // Filter by salesman
-            if (selectedSalesman.trim()) {
-                filteredClients = filteredClients.filter(client => client.salesman_name === selectedSalesman);
-            }
-            
-            this.displayClients(filteredClients);
-            
-            // --- FIX: Disable infinite scroll for filtered results ---
-            const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
-            if (loadMoreBtn) {
-                loadMoreBtn.remove();
-            }
-            this.hasMoreClients = false; // Prevent observer from firing
-            // ---------------------------------------------------------
-            
-            // Update count
+            // Only filters (no search) - use backend to get ALL filtered clients
+            await this.loadFilteredClients(selectedRegion, selectedSalesman);
+        }
+    },
+    
+    loadFilteredClients: async function(selectedRegion = '', selectedSalesman = '') {
+        /**Load filtered clients from backend (searches ALL data, not just displayed)*/
+        try {
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
-            this.updateStatusIndicator('clients', currentStatus, filteredClients.length);
-            this.updateClientCount(filteredClients.length);
+            
+            let apiUrl = `${API_BASE_URL}/clients/list?page=1&per_page=100`;
+            if (currentStatus === 'all' || currentStatus === 'inactive') {
+                apiUrl += '&show_all=true';
+            }
+            if (selectedRegion) {
+                apiUrl += `&region=${encodeURIComponent(selectedRegion)}`;
+            }
+            if (selectedSalesman) {
+                apiUrl += `&salesman=${encodeURIComponent(selectedSalesman)}`;
+            }
+            
+            const response = await fetch(apiUrl, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const filteredClients = data.clients || [];
+                
+                // Display results
+                this.displayClients(filteredClients, false);
+                
+                // Load thumbnails
+                this.loadClientThumbnails(filteredClients);
+                
+                // --- FIX: Disable infinite scroll for filtered results ---
+                const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
+                if (loadMoreBtn) {
+                    loadMoreBtn.remove();
+                }
+                this.hasMoreClients = false; // Prevent observer from firing
+                // ---------------------------------------------------------
+                
+                // Update count
+                this.updateStatusIndicator('clients', currentStatus, data.total);
+                this.updateClientCount(filteredClients.length);
+            } else {
+                console.error('Failed to load filtered clients');
+            }
+        } catch (error) {
+            console.error('Error loading filtered clients:', error);
         }
     },
     

@@ -459,6 +459,8 @@ def get_clients_list(current_user):
         show_all = request.args.get('show_all', 'false').lower() == 'true'
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 20))  # Load 20 at a time
+        region_filter = request.args.get('region', '').strip()
+        salesman_filter = request.args.get('salesman', '').strip()
         
         # Build query
         if current_user.role == UserRole.SUPER_ADMIN:
@@ -471,6 +473,14 @@ def get_clients_list(current_user):
                 query = Client.query.filter_by(assigned_user_id=current_user.id)
             else:
                 query = Client.query.filter_by(assigned_user_id=current_user.id, is_active=True)
+        
+        # Apply region filter if provided
+        if region_filter:
+            query = query.filter_by(region=region_filter)
+        
+        # Apply salesman filter if provided
+        if salesman_filter:
+            query = query.filter_by(salesman_name=salesman_filter)
         
         # Get total count for pagination info
         total_count = query.count()
