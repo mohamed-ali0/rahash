@@ -3,120 +3,47 @@
 // Global variables
 let currentLanguage = 'ar';
 
-// Global scroll management system
-// Comprehensive Scroll Management System - Prevents all scroll freezing issues
+// REVISED: Global scroll management system
+// Simpler and more robust - avoids 'position: fixed' issues
 const ScrollManager = {
-    disableCount: 0, // Use counter instead of boolean
-    isScrollDisabled: false, // Keep for backward compatibility
-    disabledBy: null,
-    scrollPosition: 0,
-    originalStyles: {},
-    
+    disableCount: 0,
+
     disableScroll: function(source = 'unknown') {
         if (this.disableCount === 0) {
-            // Only apply styles the first time
-            this.scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-            
-            // Store original styles
-            this.originalStyles = {
-                overflow: document.body.style.overflow,
-                overflowY: document.body.style.overflowY,
-                position: document.body.style.position,
-                top: document.body.style.top,
-                width: document.body.style.width
-            };
-            
-            // Disable scroll
+            // Store original overflow styles
+            this.originalHtmlOverflow = document.documentElement.style.overflow;
+            this.originalBodyOverflow = document.body.style.overflow;
+
+            // Disable scroll on both html and body
+            document.documentElement.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
-            document.body.style.overflowY = 'hidden';
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${this.scrollPosition}px`;
-            document.body.style.width = '100%';
-            
-            this.isScrollDisabled = true;
-            this.disabledBy = source;
         }
-        
         this.disableCount++;
         console.log(`Scroll disabled by: ${source}. Count: ${this.disableCount}`);
     },
-    
+
     enableScroll: function(source = 'unknown') {
-        this.disableCount--;
-        
-        if (this.disableCount <= 0) {
-            // Only restore styles when the last modal is closed
-            this.disableCount = 0; // Prevent negative
-            
-            // Restore original styles
-            document.body.style.overflow = this.originalStyles.overflow || 'auto';
-            document.body.style.overflowY = this.originalStyles.overflowY || 'auto';
-            document.body.style.position = this.originalStyles.position || '';
-            document.body.style.top = this.originalStyles.top || '';
-            document.body.style.width = this.originalStyles.width || '';
-            
-            // Restore scroll position
-            window.scrollTo(0, this.scrollPosition);
-            
-            this.isScrollDisabled = false;
-            this.disabledBy = null;
-            this.scrollPosition = 0;
-            this.originalStyles = {};
+        // Only decrement if the count is greater than 0
+        if (this.disableCount > 0) {
+            this.disableCount--;
+        }
+
+        if (this.disableCount === 0) {
+            // Restore original styles only when the last lock is released
+            document.documentElement.style.overflow = this.originalHtmlOverflow || '';
+            document.body.style.overflow = this.originalBodyOverflow || '';
             console.log(`Scroll enabled by: ${source}. Count is zero.`);
         } else {
             console.log(`Scroll not yet enabled by: ${source}. Count: ${this.disableCount}`);
         }
     },
     
+    // This can be used as a failsafe if needed, but the new system is much less likely to require it
     forceEnableScroll: function() {
-        // Force restore all scroll properties
-        document.body.style.overflow = 'auto';
-        document.body.style.overflowY = 'auto';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        
-        // Remove any stuck modals
-        const stuckModals = document.querySelectorAll('.modal-overlay, .expanded-modal, .fullscreen-image-modal, .sidebar-overlay');
-        stuckModals.forEach(modal => {
-            console.log('Removing stuck modal:', modal.className);
-            modal.remove();
-        });
-        
-        // Reset state
-        this.disableCount = 0; // Reset counter
-        this.isScrollDisabled = false;
-        this.disabledBy = null;
-        this.scrollPosition = 0;
-        this.originalStyles = {};
-        
-        console.log('Force scroll enabled - all modals cleared');
-    },
-    
-    isScrollCurrentlyDisabled: function() {
-        return this.isScrollDisabled;
-    },
-    
-    getDisabledBy: function() {
-        return this.disabledBy;
-    },
-    
-    // Emergency recovery function
-    emergencyRecovery: function() {
-        console.log('Emergency scroll recovery initiated');
-        this.forceEnableScroll();
-        
-        // Additional cleanup
-        document.querySelectorAll('[style*="overflow: hidden"]').forEach(el => {
-            if (el !== document.body) {
-                el.style.overflow = 'auto';
-            }
-        });
-        
-        // Remove any remaining overlays
-        document.querySelectorAll('.overlay, .backdrop').forEach(el => el.remove());
-        
-        console.log('Emergency recovery completed');
+        document.documentElement.style.overflow = '';
+        document.body.style.overflow = '';
+        this.disableCount = 0;
+        console.log('Force scroll enabled.');
     }
 };
 
@@ -144,47 +71,7 @@ function openModalAndDisableScroll(modal, source = 'openModalAndDisableScroll') 
     }
 }
 
-// Emergency function to restore scrolling if page gets frozen
-function emergencyRestoreScroll() {
-    ScrollManager.emergencyRecovery();
-    console.log('Emergency scroll restore executed');
-}
-
-// Add emergency scroll restore on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Restore scroll on page load in case it was frozen
-    emergencyRestoreScroll();
-});
-
-// Add keyboard shortcut to force restore scroll (Ctrl+Shift+R)
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
-        e.preventDefault();
-        emergencyRestoreScroll();
-        alert('Scroll restored! If the page is still frozen, try refreshing.');
-    }
-});
-
-// Add periodic scroll health check
-// Removed setInterval health check - no longer needed with improved ScrollManager
-
-// Add beforeunload event to ensure scroll is restored
-window.addEventListener('beforeunload', function() {
-    if (ScrollManager.isScrollCurrentlyDisabled()) {
-        ScrollManager.forceEnableScroll();
-    }
-});
-
-// Add visibility change event to restore scroll when tab becomes visible
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden && ScrollManager.isScrollCurrentlyDisabled()) {
-        const activeModals = document.querySelectorAll('.modal-overlay, .expanded-modal, .fullscreen-image-modal');
-        if (activeModals.length === 0) {
-            console.log('Tab became visible with disabled scroll but no modals - forcing enable');
-            ScrollManager.forceEnableScroll();
-        }
-    }
-});
+// No emergency recovery needed with the new robust ScrollManager
 
 // Sidebar functionality
 function toggleSidebar() {
@@ -960,9 +847,6 @@ const ClientManager = {
                 // Add load more button if there are more clients
                 this.addLoadMoreButton('clients');
                 
-                // Add scroll detection for auto-loading (temporarily disabled to prevent crashes)
-                // this.setupScrollDetection('clients');
-                
                 // Update status indicator
                 this.updateStatusIndicator('clients', statusFilter, this.totalClients);
             } else {
@@ -1055,16 +939,12 @@ const ClientManager = {
             existingButton.remove();
         }
         
-        // Add load more button if there are more items
-        const hasMore = type === 'clients' ? this.hasMoreClients : 
-                       type === 'products' ? this.hasMoreProducts : 
-                       this.hasMoreReports;
-        
-        if (hasMore) {
+        // Add load more button if there are more items (ClientManager only checks hasMoreClients)
+        if (this.hasMoreClients) {
             const button = document.createElement('div');
             button.className = 'load-more-button';
             button.innerHTML = `
-                <button class="btn btn-secondary load-more-btn" onclick="ClientManager.loadMore${type.charAt(0).toUpperCase() + type.slice(1)}()">
+                <button class="btn btn-secondary load-more-btn" onclick="ClientManager.loadMoreClients()">
                     <div class="loading-spinner" style="display: none;">
                         <div class="spinner-ring"></div>
                         <div class="spinner-ring"></div>
@@ -1081,32 +961,43 @@ const ClientManager = {
     },
     
     setupLoadMoreObserver: function(button, type) {
-        /**Setup Intersection Observer to auto-click load more when it comes into view*/
-        // Disconnect existing observer if any
-        if (this.loadMoreObserver) {
-            this.loadMoreObserver.disconnect();
-        }
-        
-        // Create new observer
-        this.loadMoreObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Button is visible, auto-click it
-                    console.log(`Load more button visible for ${type}, auto-loading...`);
-                    const btn = entry.target.querySelector('.load-more-btn');
-                    if (btn && !btn.disabled) {
-                        btn.click();
+        /**Setup Intersection Observer to auto-click load more when it comes into view (OPTIONAL - button always works manually)*/
+        try {
+            // Disconnect existing observer if any
+            if (this.loadMoreObserver) {
+                this.loadMoreObserver.disconnect();
+            }
+            
+            // Create new observer (this is a convenience feature - button works without it)
+            this.loadMoreObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Button is visible, auto-click it (but user can still click manually)
+                        console.log(`Load more button visible for ${type}, auto-loading...`);
+                        const btn = entry.target.querySelector('.load-more-btn');
+                        if (btn && !btn.disabled) {
+                            // Add small delay to ensure proper rendering
+                            setTimeout(() => {
+                                if (btn && !btn.disabled) {
+                                    btn.click();
+                                }
+                            }, 100);
+                        }
                     }
-                }
+                });
+            }, {
+                root: null, // viewport
+                rootMargin: '100px', // Trigger 100px before button is visible (reduced from 200px for reliability)
+                threshold: 0.1
             });
-        }, {
-            root: null, // viewport
-            rootMargin: '200px', // Trigger 200px before button is visible
-            threshold: 0.1
-        });
-        
-        // Start observing
-        this.loadMoreObserver.observe(button);
+            
+            // Start observing
+            this.loadMoreObserver.observe(button);
+            console.log(`✅ Auto-load observer started for ${type} (button also works manually)`);
+        } catch (error) {
+            // If observer fails, button still works manually
+            console.log(`⚠️ Auto-load observer failed for ${type} (button will work manually only):`, error);
+        }
     },
     
     loadMoreClients: async function() {
@@ -1163,60 +1054,6 @@ const ClientManager = {
         }
     },
     
-    setupScrollDetection: function(type) {
-        /**Setup scroll detection to auto-trigger load more when user scrolls to bottom*/
-        const listElement = document.getElementById(`${type}List`);
-        if (!listElement) return;
-        
-        // Remove existing scroll listener
-        if (this.scrollListener) {
-            window.removeEventListener('scroll', this.scrollListener);
-        }
-        
-        let isLoading = false; // Prevent multiple simultaneous loads
-        
-        this.scrollListener = () => {
-            if (isLoading) return; // Prevent multiple calls
-            
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const windowHeight = window.innerHeight;
-            const documentHeight = document.documentElement.scrollHeight;
-            
-            // Check if user is near bottom (within 100px)
-            if (scrollTop + windowHeight >= documentHeight - 100) {
-                const hasMore = type === 'clients' ? this.hasMoreClients : 
-                               type === 'products' ? this.hasMoreProducts : 
-                               this.hasMoreReports;
-                
-                if (hasMore) {
-                    isLoading = true; // Set loading flag
-                    
-                    // Auto-trigger load more with timeout to prevent crashes
-                    setTimeout(() => {
-                        if (type === 'clients') {
-                            this.loadMoreClients();
-                        } else if (type === 'products') {
-                            this.loadMoreProducts();
-                        } else if (type === 'reports') {
-                            this.loadMoreReports();
-                        }
-                        isLoading = false; // Reset flag after load
-                    }, 100);
-                }
-            }
-        };
-        
-        // Add scroll listener with throttling
-        window.addEventListener('scroll', this.scrollListener, { passive: true });
-    },
-    
-    cleanupScrollDetection: function() {
-        /**Clean up scroll listeners when switching sections*/
-        if (this.scrollListener) {
-            window.removeEventListener('scroll', this.scrollListener);
-            this.scrollListener = null;
-        }
-    },
     
     loadFilterData: async function() {
         /**Load all unique regions and salesmen for filter dropdowns*/
@@ -1394,6 +1231,14 @@ const ClientManager = {
     },
     
     filterClients: async function(searchTerm = '', selectedRegion = '', selectedSalesman = '') {
+        // If search term or filters are cleared, reload the full list with infinite scroll
+        if (!searchTerm.trim() && !selectedRegion.trim() && !selectedSalesman.trim()) {
+            const statusFilter = document.getElementById('clientStatusFilter');
+            const currentStatus = statusFilter ? statusFilter.value : 'active';
+            this.loadClients(currentStatus); // Reloads page 1 and re-enables infinite scroll
+            return;
+        }
+
         // If search term is provided, use backend search for ALL clients
         if (searchTerm.trim()) {
             await this.searchClients(searchTerm, selectedRegion, selectedSalesman);
@@ -1412,6 +1257,14 @@ const ClientManager = {
             }
             
             this.displayClients(filteredClients);
+            
+            // --- FIX: Disable infinite scroll for filtered results ---
+            const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
+            if (loadMoreBtn) {
+                loadMoreBtn.remove();
+            }
+            this.hasMoreClients = false; // Prevent observer from firing
+            // ---------------------------------------------------------
             
             // Update count
             const statusFilter = document.getElementById('clientStatusFilter');
@@ -1454,15 +1307,17 @@ const ClientManager = {
                 // Load thumbnails for search results
                 this.loadClientThumbnails(searchResults);
                 
+                // --- FIX: Disable infinite scroll for search results ---
+                const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
+                if (loadMoreBtn) {
+                    loadMoreBtn.remove();
+                }
+                this.hasMoreClients = false; // Prevent observer from firing
+                // -------------------------------------------------------
+                
                 // Update count
                 this.updateStatusIndicator('clients', currentStatus, data.total);
                 this.updateClientCount(searchResults.length);
-                
-                // Hide load more button during search
-                const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
-                if (loadMoreBtn) {
-                    loadMoreBtn.style.display = 'none';
-                }
             } else {
                 console.error('Failed to search clients');
             }
@@ -3487,22 +3342,18 @@ const ProductManager = {
             existingButton.remove();
         }
         
-        // Add load more button if there are more items
-        const hasMore = type === 'clients' ? this.hasMoreClients : 
-                       type === 'products' ? this.hasMoreProducts : 
-                       this.hasMoreReports;
-        
-        if (hasMore) {
+        // Add load more button if there are more items (ProductManager only checks hasMoreProducts)
+        if (this.hasMoreProducts) {
             const button = document.createElement('div');
             button.className = 'load-more-button';
             button.innerHTML = `
                 <button class="btn btn-secondary load-more-btn" onclick="ProductManager.loadMoreProducts()">
-                    <span class="btn-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
-                    <div class="btn-spinner" style="display: none;">
+                    <div class="loading-spinner" style="display: none;">
                         <div class="spinner-ring"></div>
                         <div class="spinner-ring"></div>
                         <div class="spinner-ring"></div>
                     </div>
+                    <span class="button-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
                 </button>
             `;
             listElement.appendChild(button);
@@ -3513,33 +3364,43 @@ const ProductManager = {
     },
     
     setupLoadMoreObserver: function(button, type) {
-        /**Setup Intersection Observer to auto-click load more when it comes into view*/
-        // Disconnect existing observer if any
-        if (this.loadMoreObserver) {
-            this.loadMoreObserver.disconnect();
-        }
-        
-        // Create new observer
-        this.loadMoreObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Button is visible, auto-click it
-                    console.log(`Load more button visible for ${type}, auto-loading...`);
-                    const btn = entry.target.querySelector('.load-more-btn');
-                    if (btn && !btn.disabled) {
-                        btn.click();
+        /**Setup Intersection Observer to auto-click load more when it comes into view (OPTIONAL - button always works manually)*/
+        try {
+            // Disconnect existing observer if any
+            if (this.loadMoreObserver) {
+                this.loadMoreObserver.disconnect();
+            }
+            
+            // Create new observer (this is a convenience feature - button works without it)
+            this.loadMoreObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Button is visible, auto-click it (but user can still click manually)
+                        console.log(`Load more button visible for ${type}, auto-loading...`);
+                        const btn = entry.target.querySelector('.load-more-btn');
+                        if (btn && !btn.disabled) {
+                            // Add small delay to ensure proper rendering
+                            setTimeout(() => {
+                                if (btn && !btn.disabled) {
+                                    btn.click();
+                                }
+                            }, 100);
+                        }
                     }
-                }
+                });
+            }, {
+                root: null, // viewport
+                rootMargin: '100px', // Trigger 100px before button is visible (reduced from 200px for reliability)
+                threshold: 0.1
             });
-        }, {
-            root: null, // viewport
-            rootMargin: '200px', // Trigger 200px before button is visible
-            threshold: 0.1
-        });
-        
-        // Start observing
-        this.loadMoreObserver.observe(button);
-        console.log(`Observer started for ProductManager, type: ${type}`);
+            
+            // Start observing
+            this.loadMoreObserver.observe(button);
+            console.log(`✅ Auto-load observer started for ${type} (button also works manually)`);
+        } catch (error) {
+            // If observer fails, button still works manually
+            console.log(`⚠️ Auto-load observer failed for ${type} (button will work manually only):`, error);
+        }
     }
 };
 
@@ -3954,14 +3815,16 @@ const ReportManager = {
                     this.displayReports(searchResults, false);
                 }
                 
-                // Update count
-                this.updateStatusIndicator('reports', currentStatus, data.total);
-                
-                // Hide load more button during search
+                // --- FIX: Disable infinite scroll for search results ---
                 const loadMoreBtn = document.querySelector('#reportsList .load-more-button');
                 if (loadMoreBtn) {
-                    loadMoreBtn.style.display = 'none';
+                    loadMoreBtn.remove();
                 }
+                this.hasMoreReports = false; // Prevent observer from firing
+                // -------------------------------------------------------
+                
+                // Update count
+                this.updateStatusIndicator('reports', currentStatus, data.total);
             } else {
                 console.error('Failed to search reports');
             }
@@ -5386,22 +5249,18 @@ const ReportManager = {
             existingButton.remove();
         }
         
-        // Add load more button if there are more items
-        const hasMore = type === 'clients' ? this.hasMoreClients : 
-                       type === 'products' ? this.hasMoreProducts : 
-                       this.hasMoreReports;
-        
-        if (hasMore) {
+        // Add load more button if there are more items (ReportManager only checks hasMoreReports)
+        if (this.hasMoreReports) {
             const button = document.createElement('div');
             button.className = 'load-more-button';
             button.innerHTML = `
                 <button class="btn btn-secondary load-more-btn" onclick="ReportManager.loadMoreReports()">
-                    <span class="btn-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
-                    <div class="btn-spinner" style="display: none;">
+                    <div class="loading-spinner" style="display: none;">
                         <div class="spinner-ring"></div>
                         <div class="spinner-ring"></div>
                         <div class="spinner-ring"></div>
                     </div>
+                    <span class="button-text">${currentLanguage === 'ar' ? 'تحميل المزيد' : 'Load More'}</span>
                 </button>
             `;
             listElement.appendChild(button);
@@ -5412,33 +5271,43 @@ const ReportManager = {
     },
     
     setupLoadMoreObserver: function(button, type) {
-        /**Setup Intersection Observer to auto-click load more when it comes into view*/
-        // Disconnect existing observer if any
-        if (this.loadMoreObserver) {
-            this.loadMoreObserver.disconnect();
-        }
-        
-        // Create new observer
-        this.loadMoreObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Button is visible, auto-click it
-                    console.log(`Load more button visible for ${type}, auto-loading...`);
-                    const btn = entry.target.querySelector('.load-more-btn');
-                    if (btn && !btn.disabled) {
-                        btn.click();
+        /**Setup Intersection Observer to auto-click load more when it comes into view (OPTIONAL - button always works manually)*/
+        try {
+            // Disconnect existing observer if any
+            if (this.loadMoreObserver) {
+                this.loadMoreObserver.disconnect();
+            }
+            
+            // Create new observer (this is a convenience feature - button works without it)
+            this.loadMoreObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Button is visible, auto-click it (but user can still click manually)
+                        console.log(`Load more button visible for ${type}, auto-loading...`);
+                        const btn = entry.target.querySelector('.load-more-btn');
+                        if (btn && !btn.disabled) {
+                            // Add small delay to ensure proper rendering
+                            setTimeout(() => {
+                                if (btn && !btn.disabled) {
+                                    btn.click();
+                                }
+                            }, 100);
+                        }
                     }
-                }
+                });
+            }, {
+                root: null, // viewport
+                rootMargin: '100px', // Trigger 100px before button is visible (reduced from 200px for reliability)
+                threshold: 0.1
             });
-        }, {
-            root: null, // viewport
-            rootMargin: '200px', // Trigger 200px before button is visible
-            threshold: 0.1
-        });
-        
-        // Start observing
-        this.loadMoreObserver.observe(button);
-        console.log(`Observer started for ReportManager, type: ${type}`);
+            
+            // Start observing
+            this.loadMoreObserver.observe(button);
+            console.log(`✅ Auto-load observer started for ${type} (button also works manually)`);
+        } catch (error) {
+            // If observer fails, button still works manually
+            console.log(`⚠️ Auto-load observer failed for ${type} (button will work manually only):`, error);
+        }
     }
 };
 
@@ -5539,14 +5408,14 @@ function setupReportSearch() {
 
 // Add search functionality to ProductManager
 ProductManager.filterProducts = async function(searchTerm) {
-    // If search term is provided, use backend search for ALL products
-    if (searchTerm && searchTerm.trim()) {
-        await this.searchProducts(searchTerm.trim());
-    } else {
-        // No search term - show all current products
-        this.displayProducts(this.currentProducts, false);
-        this.updateStatusIndicator('products', 'all', this.totalProducts);
+    // If search is cleared, reload the full list with infinite scroll
+    if (!searchTerm || !searchTerm.trim()) {
+        await this.loadProducts(); // Reloads page 1 and re-enables infinite scroll
+        return;
     }
+    
+    // If search term is provided, use backend search for ALL products
+    await this.searchProducts(searchTerm.trim());
 };
 
 ProductManager.searchProducts = async function(searchTerm) {
@@ -5580,14 +5449,16 @@ ProductManager.searchProducts = async function(searchTerm) {
                 this.loadProductThumbnails(searchResults);
             }
             
-            // Update count
-            this.updateStatusIndicator('products', 'all', data.total);
-            
-            // Hide load more button during search
+            // --- FIX: Disable infinite scroll for search results ---
             const loadMoreBtn = document.querySelector('#productsList .load-more-button');
             if (loadMoreBtn) {
-                loadMoreBtn.style.display = 'none';
+                loadMoreBtn.remove();
             }
+            this.hasMoreProducts = false; // Prevent observer from firing
+            // -------------------------------------------------------
+            
+            // Update count
+            this.updateStatusIndicator('products', 'all', data.total);
         } else {
             console.error('Failed to search products');
         }
