@@ -1,84 +1,25 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
+# Python Virtual Environments
 venv/
 env/
-ENV/
-env.bak/
-venv.bak/
 
-# IDE
+# Python cache
+__pycache__/
+*.py[cod]
+
+# IDE / Editor files
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
-# OS
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-
-# Excel temporary files
-~$*.xlsx
-~$*.xls
-
-# Logs
-*.log
 
 # Environment variables
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# Flask
-.flaskenv
-
-# Database files - Strategy: Track the main database
-instance/business_management.db
-# The main database (instance/business_management.db) will be pushed to server
-# Only backup files are ignored
-
-# Ignore backup database files
-instance/*_backup_*.db
-instance/*.bak
-
-# Ignore other database formats (not used by this project)
+# --- DATABASE FILES ---
+# Ignore all database, sqlite, and backup files
+*.db
 *.sqlite
 *.sqlite3
-
-# IMPORTANT: instance/business_management.db is NOT ignored
-# It will be tracked and pushed to update the server database
-
-# Migration cache (keep migration files but not cache)
-migrations/versions/__pycache__/
-
-# Keep templates folder
-!templates/
+*.bak
