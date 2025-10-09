@@ -62,6 +62,7 @@ Thumbs.db
 .flaskenv
 
 # Database files - Strategy: Track the main database
+instance/business_management.db
 # The main database (instance/business_management.db) will be pushed to server
 # Only backup files are ignored
 
