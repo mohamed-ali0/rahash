@@ -1,6 +1,3 @@
 {
-  "price_tolerance": {
-    "value": "3.0",
-    "description": "Maximum allowed difference between internal and displayed price"
-  }
+    "price_tolerance": 5.0
 }

@@ -119,6 +119,82 @@ function initializeSidebar() {
 window.addEventListener('resize', function() {
     initializeSidebar();
 });
+
+// System Settings Functions
+async function loadSystemSettings() {
+    console.log('Loading system settings...');
+    try {
+        const response = await fetch(`${API_BASE_URL}/system-settings`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('System settings loaded:', data);
+            
+            // Update the price tolerance input field
+            const priceToleranceInput = document.getElementById('priceTolerance');
+            if (priceToleranceInput && data.price_tolerance !== undefined) {
+                priceToleranceInput.value = data.price_tolerance;
+                console.log('Price tolerance set to:', data.price_tolerance);
+            }
+        } else {
+            console.error('Failed to load system settings:', response.status);
+        }
+    } catch (error) {
+        console.error('Error loading system settings:', error);
+    }
+}
+
+async function saveSystemSettings() {
+    console.log('Saving system settings...');
+    
+    const priceToleranceInput = document.getElementById('priceTolerance');
+    if (!priceToleranceInput) {
+        alert(currentLanguage === 'ar' ? 'خطأ: لم يتم العثور على حقل نطاق التسعير' : 'Error: Price tolerance field not found');
+        return;
+    }
+
+    const priceTolerance = parseFloat(priceToleranceInput.value);
+    
+    if (isNaN(priceTolerance) || priceTolerance < 0) {
+        alert(currentLanguage === 'ar' ? 'الرجاء إدخال قيمة صحيحة لنطاق التسعير' : 'Please enter a valid price tolerance value');
+        return;
+    }
+
+    console.log('Saving price tolerance:', priceTolerance);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/system-settings`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                price_tolerance: priceTolerance
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('System settings saved successfully:', result);
+            alert(currentLanguage === 'ar' ? 'تم حفظ الإعدادات بنجاح' : 'Settings saved successfully');
+        } else {
+            const errorData = await response.json();
+            console.error('Failed to save system settings:', errorData);
+            alert(currentLanguage === 'ar' ? 'خطأ في حفظ الإعدادات' : 'Error saving settings: ' + (errorData.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving system settings:', error);
+        alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Connection error');
+    }
+}
+
 // Dynamic API URL - works for both localhost and deployed server
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:5009/api`;
 
@@ -270,22 +346,24 @@ function showSection(sectionId) {
                 if (userInfo) {
                     try {
                         const user = JSON.parse(userInfo);
-                        if (user.role === 'super_admin') {
+                        if (isSuperAdmin(user)) {
                             // Ensure settings menu is visible
                             setupUserInterface();
                             // Load settings immediately and with delay to ensure field is populated
-                            SettingsManager.loadSettings();
+                            loadSystemSettings();
                             setTimeout(() => {
-                                SettingsManager.loadSettings();
+                                loadSystemSettings();
                             }, 200);
                         } else {
                             alert(currentLanguage === 'ar' ? 'ليس لديك صلاحية للوصول إلى إعدادات النظام' : 'You do not have permission to access system settings');
+                            showSection('dashboard');
                         }
                     } catch (error) {
                         console.error('Error parsing userInfo:', error);
                     }
                 } else {
                     alert(currentLanguage === 'ar' ? 'ليس لديك صلاحية للوصول إلى إعدادات النظام' : 'You do not have permission to access system settings');
+                    showSection('dashboard');
                 }
                 break;
         }
@@ -466,14 +544,19 @@ function setupUserInterface() {
             }
 
             // Hide System Settings for non-super-admin users
-            const settingsMenuItem = document.getElementById('settingsMenuItem');
+            const settingsMenuItem = document.getElementById('systemSettingsMenuItem');
             if (settingsMenuItem) {
                 const isAdmin = isSuperAdmin(user);
+                console.log('User role check:', user.role, 'Is admin:', isAdmin);
                 if (isAdmin) {
-                    settingsMenuItem.style.display = 'block';
+                    settingsMenuItem.style.display = 'list-item';
+                    console.log('System settings menu shown for admin');
                 } else {
                     settingsMenuItem.style.display = 'none';
+                    console.log('System settings menu hidden for non-admin');
                 }
+            } else {
+                console.log('System settings menu item not found in DOM');
             }
         } catch (error) {
             console.error('Error parsing userInfo:', error);
@@ -1809,7 +1892,7 @@ const ClientManager = {
                     <h3>${currentLanguage === 'ar' ? 'تعديل العميل' : 'Edit Client'}</h3>
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
                 </div>
-                <form id="editClientForm" onsubmit="ClientManager.saveClient(event, ${clientId})">
+                <form id="editClientForm" onsubmit="ClientManager.saveClient(event, ${client.id}); return false;">
                     
                     <!-- Basic Information Section -->
                     <div class="form-section">
@@ -5702,158 +5785,3 @@ ProductManager.displayFilteredProducts = function(products) {
         `).join('');
     }
 };
-
-// Show specific section and hide others
-function showSection(sectionId) {
-    // Hide all sections
-    const sections = document.querySelectorAll('main section');
-    sections.forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Show the requested section
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-    
-    // Load section-specific data
-    switch(sectionId) {
-        case 'dashboard':
-            loadDashboardData();
-            break;
-        case 'clients':
-            ClientManager.loadClients();
-            break;
-        case 'products':
-            ProductManager.loadProducts();
-            break;
-        case 'reports':
-            ReportManager.loadReports();
-            break;
-        case 'settings':
-            loadSystemSettings();
-            break;
-    }
-}
-
-// Initialize the application
-function initializeApp() {
-    // Check if user is logged in
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-        window.location.href = '/login.html';
-        return;
-    }
-    
-    // Set up user interface based on role
-    setupUserInterface();
-    
-    // Show dashboard by default
-    showSection('dashboard');
-    
-    // Initialize sidebar
-    initializeSidebar();
-}
-
-// Set up user interface based on role
-function setupUserInterface() {
-    try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        const isSuperAdmin = userInfo.role === 'super_admin';
-        
-        console.log('User role:', userInfo.role, 'Is super admin:', isSuperAdmin);
-        
-        // Show/hide system settings menu item
-        const systemSettingsMenuItem = document.getElementById('systemSettingsMenuItem');
-        if (systemSettingsMenuItem) {
-            if (isSuperAdmin) {
-                systemSettingsMenuItem.style.display = 'block';
-                console.log('System settings menu shown for super admin');
-            } else {
-                systemSettingsMenuItem.style.display = 'none';
-                console.log('System settings menu hidden for non-super admin');
-            }
-        } else {
-            console.log('System settings menu item not found');
-        }
-        
-        // Update user greeting
-        const userGreeting = document.getElementById('userGreeting');
-        if (userGreeting && userInfo.username) {
-            userGreeting.textContent = currentLanguage === 'ar' ? 
-                `مرحباً، ${userInfo.username}` : 
-                `Welcome, ${userInfo.username}`;
-        }
-        
-    } catch (error) {
-        console.error('Error setting up user interface:', error);
-    }
-}
-
-// Load system settings
-function loadSystemSettings() {
-    try {
-        // Load current settings from the backend
-        fetch(`${API_BASE_URL}/settings`, {
-            headers: getAuthHeaders()
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Settings loaded:', data);
-            const priceToleranceInput = document.getElementById('priceTolerance');
-            if (priceToleranceInput && data.price_tolerance && data.price_tolerance.value) {
-                priceToleranceInput.value = data.price_tolerance.value;
-            }
-        })
-        .catch(error => {
-            console.error('Error loading system settings:', error);
-        });
-    } catch (error) {
-        console.error('Error loading system settings:', error);
-    }
-}
-
-// Save system settings
-function saveSystemSettings() {
-    try {
-        const priceTolerance = document.getElementById('priceTolerance').value;
-        
-        const settings = {
-            price_tolerance: parseFloat(priceTolerance) || 0
-        };
-        
-        fetch(`${API_BASE_URL}/settings/price-tolerance`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...getAuthHeaders()
-            },
-            body: JSON.stringify(settings)
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Save response:', data);
-            if (data.message && data.message.includes('successfully')) {
-                alert(currentLanguage === 'ar' ? 'تم حفظ الإعدادات بنجاح' : 'Settings saved successfully');
-            } else {
-                alert(currentLanguage === 'ar' ? 'فشل في حفظ الإعدادات' : 'Failed to save settings');
-            }
-        })
-        .catch(error => {
-            console.error('Error saving system settings:', error);
-            alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء حفظ الإعدادات' : 'Error saving settings');
-        });
-    } catch (error) {
-        console.error('Error saving system settings:', error);
-        alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء حفظ الإعدادات' : 'Error saving settings');
-    }
-}
-
-// Get authentication headers
-function getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
-    return {
-        'Authorization': `Bearer ${token}`
-    };
-}

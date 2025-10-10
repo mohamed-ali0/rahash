@@ -932,69 +932,72 @@ def update_client(current_user, client_id):
         if 'owner' in data and data['owner']:
             owner_data = data['owner']
             if not client.owner:
-                # Create new owner
-                from database.models import Person
-                owner = Person(
-                    name=owner_data.get('name'),
-                    phone=owner_data.get('phone'),
-                    email=owner_data.get('email')
-                )
-                db.session.add(owner)
-                db.session.flush()
-                client.owner_id = owner.id
+                # Create new owner only if at least one field has a value
+                if owner_data.get('name') or owner_data.get('phone') or owner_data.get('email'):
+                    from database.models import Person
+                    owner = Person(
+                        name=owner_data.get('name'),
+                        phone=owner_data.get('phone'),
+                        email=owner_data.get('email')
+                    )
+                    db.session.add(owner)
+                    db.session.flush()
+                    client.owner_id = owner.id
             else:
                 # Update existing owner
-                if owner_data.get('name'):
+                if 'name' in owner_data:
                     client.owner.name = owner_data.get('name')
-                if owner_data.get('phone'):
+                if 'phone' in owner_data:
                     client.owner.phone = owner_data.get('phone')
-                if owner_data.get('email'):
+                if 'email' in owner_data:
                     client.owner.email = owner_data.get('email')
         
         # Handle Purchasing Manager information
         if 'purchasing_manager' in data and data['purchasing_manager']:
             manager_data = data['purchasing_manager']
             if not client.purchasing_manager:
-                # Create new manager
-                from database.models import Person
-                manager = Person(
-                    name=manager_data.get('name'),
-                    phone=manager_data.get('phone'),
-                    email=manager_data.get('email')
-                )
-                db.session.add(manager)
-                db.session.flush()
-                client.purchasing_manager_id = manager.id
+                # Create new manager only if at least one field has a value
+                if manager_data.get('name') or manager_data.get('phone') or manager_data.get('email'):
+                    from database.models import Person
+                    manager = Person(
+                        name=manager_data.get('name'),
+                        phone=manager_data.get('phone'),
+                        email=manager_data.get('email')
+                    )
+                    db.session.add(manager)
+                    db.session.flush()
+                    client.purchasing_manager_id = manager.id
             else:
                 # Update existing manager
-                if manager_data.get('name'):
+                if 'name' in manager_data:
                     client.purchasing_manager.name = manager_data.get('name')
-                if manager_data.get('phone'):
+                if 'phone' in manager_data:
                     client.purchasing_manager.phone = manager_data.get('phone')
-                if manager_data.get('email'):
+                if 'email' in manager_data:
                     client.purchasing_manager.email = manager_data.get('email')
         
         # Handle Accountant information
         if 'accountant' in data and data['accountant']:
             accountant_data = data['accountant']
             if not client.accountant:
-                # Create new accountant
-                from database.models import Person
-                accountant = Person(
-                    name=accountant_data.get('name'),
-                    phone=accountant_data.get('phone'),
-                    email=accountant_data.get('email')
-                )
-                db.session.add(accountant)
-                db.session.flush()
-                client.accountant_id = accountant.id
+                # Create new accountant only if at least one field has a value
+                if accountant_data.get('name') or accountant_data.get('phone') or accountant_data.get('email'):
+                    from database.models import Person
+                    accountant = Person(
+                        name=accountant_data.get('name'),
+                        phone=accountant_data.get('phone'),
+                        email=accountant_data.get('email')
+                    )
+                    db.session.add(accountant)
+                    db.session.flush()
+                    client.accountant_id = accountant.id
             else:
                 # Update existing accountant
-                if accountant_data.get('name'):
+                if 'name' in accountant_data:
                     client.accountant.name = accountant_data.get('name')
-                if accountant_data.get('phone'):
+                if 'phone' in accountant_data:
                     client.accountant.phone = accountant_data.get('phone')
-                if accountant_data.get('email'):
+                if 'email' in accountant_data:
                     client.accountant.email = accountant_data.get('email')
         
         # Handle additional images
@@ -1021,6 +1024,9 @@ def update_client(current_user, client_id):
         
     except Exception as e:
         db.session.rollback()
+        print(f"ERROR updating client {client_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': 'Failed to update client', 'error': str(e)}), 500
 
 @app.route('/api/clients/<int:client_id>', methods=['DELETE'])
@@ -1475,6 +1481,72 @@ def delete_product(current_user, product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Failed to delete product', 'error': str(e)}), 500
+
+# System Settings Routes
+@app.route('/api/system-settings', methods=['GET'])
+@token_required
+def get_system_settings(current_user):
+    """Get system settings (super admin only)"""
+    try:
+        # Check if user is super admin
+        if current_user.role != UserRole.SUPER_ADMIN:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Load settings from JSON file
+        settings_file = 'sys_settings.json'
+        if os.path.exists(settings_file):
+            with open(settings_file, 'r') as f:
+                settings = json.load(f)
+                return jsonify(settings), 200
+        else:
+            # Return default settings if file doesn't exist
+            default_settings = {'price_tolerance': 0.0}
+            return jsonify(default_settings), 200
+    
+    except Exception as e:
+        print(f"Error loading system settings: {e}")
+        return jsonify({'message': 'Failed to load settings', 'error': str(e)}), 500
+
+@app.route('/api/system-settings', methods=['PUT'])
+@token_required
+def update_system_settings(current_user):
+    """Update system settings (super admin only)"""
+    try:
+        # Check if user is super admin
+        if current_user.role != UserRole.SUPER_ADMIN:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        data = request.get_json()
+        
+        if 'price_tolerance' not in data:
+            return jsonify({'message': 'price_tolerance is required'}), 400
+        
+        price_tolerance = data['price_tolerance']
+        
+        # Validate price tolerance
+        try:
+            price_tolerance = float(price_tolerance)
+            if price_tolerance < 0:
+                return jsonify({'message': 'price_tolerance must be non-negative'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'message': 'price_tolerance must be a valid number'}), 400
+        
+        # Save settings to JSON file
+        settings = {'price_tolerance': price_tolerance}
+        settings_file = 'sys_settings.json'
+        
+        with open(settings_file, 'w') as f:
+            json.dump(settings, f, indent=4)
+        
+        print(f"System settings saved: {settings}")
+        
+        return jsonify({'message': 'Settings saved successfully', 'settings': settings}), 200
+    
+    except Exception as e:
+        print(f"Error saving system settings: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Failed to save settings', 'error': str(e)}), 500
 
 # Dashboard Stats Route
 @app.route('/api/dashboard/stats', methods=['GET'])
