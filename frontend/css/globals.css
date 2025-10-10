@@ -1616,16 +1616,24 @@ section h2 .status-count {
 
 .product-card .product-actions {
     display: flex;
+    flex-direction: row;
     gap: 0.5rem;
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--background-light);
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
 }
 
 .product-card .product-actions .btn {
     flex: 1;
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Product Card Cursor */
@@ -2059,13 +2067,16 @@ section h2 .status-count {
     }
     
     .product-card .product-actions {
-        flex-direction: column;
-        gap: 0.5rem;
+        flex-direction: row !important;
+        gap: 0.25rem;
+        justify-content: center;
     }
     
     .product-card .product-actions .btn {
-        width: 100%;
+        width: auto;
+        flex: 1;
         text-align: center;
+        min-width: 0;
     }
     
     .btn-sm {
@@ -3404,11 +3415,27 @@ html[lang="en"] .section-actions {
     .btn-icon-stylish {
         width: 24px;
         height: 24px;
+        flex-shrink: 0;
     }
     
     .btn-icon-stylish svg {
         width: 12px;
         height: 12px;
+    }
+    
+    /* Ensure product action buttons stay side by side on mobile */
+    .product-card .product-actions {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 0.25rem !important;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .product-card .product-actions .btn-icon-stylish {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
     }
 }
 
