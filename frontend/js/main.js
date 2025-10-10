@@ -4215,7 +4215,8 @@ const ReportManager = {
     
     loadProductsForDropdown: async function() {
         try {
-            const response = await fetch(`${API_BASE_URL}/products`, {
+            // Use ultra-lightweight names-only endpoint for maximum speed
+            const response = await fetch(`${API_BASE_URL}/products/names`, {
                 headers: getAuthHeaders()
             });
             if (response.ok) {

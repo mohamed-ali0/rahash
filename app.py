@@ -222,6 +222,26 @@ def get_client_names_only(current_user):
         print(f"Error fetching client names: {e}")
         return jsonify({'message': 'Failed to fetch client names', 'error': str(e)}), 500
 
+@app.route('/api/products/names', methods=['GET'])
+@token_required
+def get_product_names_only(current_user):
+    """Get ONLY product IDs and names - ultra lightweight for dropdowns"""
+    try:
+        from sqlalchemy import text
+        
+        # Use raw SQL for maximum speed - only get ID and name
+        query = text("SELECT id, name FROM products ORDER BY name")
+        result = db.session.execute(query).fetchall()
+        
+        # Return minimal data - just ID and name
+        products = [{'id': row[0], 'name': row[1]} for row in result]
+        
+        return jsonify(products), 200
+        
+    except Exception as e:
+        print(f"Error fetching product names: {e}")
+        return jsonify({'message': 'Failed to fetch product names', 'error': str(e)}), 500
+
 @app.route('/api/clients/filter-data', methods=['GET'])
 @token_required
 def get_client_filter_data(current_user):
