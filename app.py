@@ -552,6 +552,81 @@ def get_clients_list(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to fetch clients list', 'error': str(e)}), 500
 
+@app.route('/api/clients/<int:client_id>', methods=['GET'])
+@token_required
+def get_single_client(current_user, client_id):
+    """Get a single client with ALL details (thumbnail + images) - for edit and expand views"""
+    try:
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Check permission
+        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Get person data
+        owner_data = None
+        if client.owner:
+            owner_data = {
+                'id': client.owner.id,
+                'name': client.owner.name,
+                'phone': client.owner.phone,
+                'email': client.owner.email
+            }
+        
+        purchasing_manager_data = None
+        if client.purchasing_manager:
+            purchasing_manager_data = {
+                'id': client.purchasing_manager.id,
+                'name': client.purchasing_manager.name,
+                'phone': client.purchasing_manager.phone,
+                'email': client.purchasing_manager.email
+            }
+        
+        accountant_data = None
+        if client.accountant:
+            accountant_data = {
+                'id': client.accountant.id,
+                'name': client.accountant.name,
+                'phone': client.accountant.phone,
+                'email': client.accountant.email
+            }
+        
+        # Get additional images
+        additional_images = []
+        for img in client.images:
+            additional_images.append({
+                'id': img.id,
+                'filename': img.filename,
+                'data': base64.b64encode(img.image_data).decode('utf-8')
+            })
+        
+        client_data = {
+            'id': client.id,
+            'name': client.name,
+            'region': client.region,
+            'location': client.location,
+            'address': getattr(client, 'address', None),
+            'salesman_name': client.salesman_name,
+            'thumbnail': base64.b64encode(client.thumbnail).decode('utf-8') if client.thumbnail else None,
+            'images': additional_images,
+            'image_count': len(additional_images),
+            'owner': owner_data,
+            'purchasing_manager': purchasing_manager_data,
+            'accountant': accountant_data,
+            'assigned_user': client.assigned_user.username if client.assigned_user else None,
+            'created_at': client.created_at.isoformat(),
+            'is_active': client.is_active,
+            'phone': client.owner.phone if client.owner else None  # For compatibility
+        }
+        
+        return jsonify(client_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching client {client_id}: {e}")
+        return jsonify({'message': 'Failed to fetch client', 'error': str(e)}), 500
+
 @app.route('/api/clients/<int:client_id>/thumbnail', methods=['GET'])
 @token_required
 def get_client_thumbnail(current_user, client_id):

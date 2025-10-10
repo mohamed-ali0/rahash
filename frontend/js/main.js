@@ -1380,13 +1380,49 @@ const ClientManager = {
         }
     },
     
-    viewClientDetails: function(clientId) {
-        const client = this.currentClients.find(c => c.id === clientId);
-        if (!client) return;
-        
-        // Create detailed expanded view modal
+    viewClientDetails: async function(clientId) {
+        // Show loading modal first
         const modal = document.createElement('div');
         modal.className = 'expanded-modal';
+        modal.innerHTML = `
+            <div class="expanded-content">
+                <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
+                <div class="loading-state">
+                    <div class="modern-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل بيانات العميل...' : 'Loading client data...'}</p>
+                </div>
+            </div>
+        `;
+        
+        // Show modal and disable scroll
+        document.body.appendChild(modal);
+        modal.classList.add('active');
+        ScrollManager.disableScroll();
+        
+        // Fetch FULL client details including thumbnail and images
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                modal.innerHTML = `
+                    <div class="expanded-content">
+                        <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
+                        <p class="error-text">${currentLanguage === 'ar' ? 'فشل تحميل بيانات العميل' : 'Failed to load client data'}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const client = await response.json();
+            console.log('Client loaded for viewing:', client);
+        
+        // Update modal with actual content (thumbnail is now available!)
         modal.innerHTML = `
             <div class="expanded-content">
                 <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
@@ -1515,16 +1551,15 @@ const ClientManager = {
                         </div>
                     </div>
                     
-                    ${client.image_count > 0 ? `
-                    <div class="detail-section additional-images-section" id="client-expanded-${client.id}">
-                        <h3>${currentLanguage === 'ar' ? 'الصور الإضافية' : 'Additional Images'} (${client.image_count})</h3>
+                    ${(client.images && Array.isArray(client.images) && client.images.length > 0) ? `
+                    <div class="detail-section additional-images-section">
+                        <h3>${currentLanguage === 'ar' ? 'الصور الإضافية' : 'Additional Images'} (${client.images.length})</h3>
                         <div class="image-gallery">
-                            <div class="modern-spinner">
-                                <div class="spinner-ring"></div>
-                                <div class="spinner-ring"></div>
-                                <div class="spinner-ring"></div>
-                            </div>
-                            <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل الصور...' : 'Loading images...'}</p>
+                            ${client.images.map(img => `
+                                <div class="gallery-item" onclick="ClientManager.viewClientImage('${img.data}', '${img.filename}')">
+                                    <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename || client.name}">
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                     ` : ''}
@@ -1544,11 +1579,24 @@ const ClientManager = {
             </div>
         `;
         
-        openModalAndDisableScroll(modal);
+        // Modal is already shown and scroll disabled from loading state
         
-        // Lazy load images after modal is displayed
-        if (client.image_count > 0) {
-            this.loadClientImages(client.id);
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+                ScrollManager.enableScroll();
+            }
+        });
+        
+        } catch (error) {
+            console.error('Error loading client for expanded view:', error);
+            modal.innerHTML = `
+                <div class="expanded-content">
+                    <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
+                    <p class="error-text">${currentLanguage === 'ar' ? 'حدث خطأ أثناء تحميل بيانات العميل' : 'Error loading client data'}</p>
+                </div>
+            `;
         }
     },
     
@@ -1737,12 +1785,20 @@ const ClientManager = {
         }
     },
     
-    editClient: function(clientId) {
-        const client = this.currentClients.find(c => c.id === clientId);
-        if (!client) return;
-        
-        // Debug: Log client data to see if additional_images is present
-        console.log('Client additional images:', client.additional_images);
+    editClient: async function(clientId) {
+        // Fetch FULL client details including thumbnail and images
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                alert(currentLanguage === 'ar' ? 'فشل تحميل بيانات العميل' : 'Failed to load client data');
+                return;
+            }
+            
+            const client = await response.json();
+            console.log('Client loaded for editing with images:', client.images);
         
         // Create comprehensive edit modal
         const modal = document.createElement('div');
@@ -1806,11 +1862,11 @@ const ClientManager = {
                         </div>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'صور إضافية جديدة' : 'New Additional Images'}</label>
-                            ${(client.additional_images && Array.isArray(client.additional_images) && client.additional_images.length > 0) ? `
+                            ${(client.images && Array.isArray(client.images) && client.images.length > 0) ? `
                                 <div class="current-images-container">
                                     <h5>${currentLanguage === 'ar' ? 'الصور الحالية:' : 'Current Images:'}</h5>
                                     <div class="images-grid">
-                                        ${client.additional_images.map(img => `
+                                        ${client.images.map(img => `
                                             <div class="current-image">
                                                 <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename}">
                                                 <button type="button" class="btn-delete-image" onclick="ClientManager.deleteAdditionalImage(${client.id}, ${img.id})" title="${currentLanguage === 'ar' ? 'حذف الصورة' : 'Delete Image'}">
@@ -1899,6 +1955,11 @@ const ClientManager = {
         
         document.body.appendChild(modal);
         modal.style.display = 'flex';
+        
+        } catch (error) {
+            console.error('Error loading client for edit:', error);
+            alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء تحميل بيانات العميل' : 'Error loading client data');
+        }
     },
     
     saveClient: async function(event, clientId) {
