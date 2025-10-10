@@ -49,9 +49,33 @@ const ScrollManager = {
 
 // Global function to safely close modals and restore scrolling
 function closeModalAndRestoreScroll(modal, source = 'closeModalAndRestoreScroll') {
-    if (modal) {
-        modal.remove();
+    if (!modal) return;
+    
+    try {
+        // Hide modal immediately for better UX
+        if (modal.style) {
+            modal.style.display = 'none';
+        }
+        if (modal.classList) {
+            modal.classList.remove('active');
+        }
+        
+        // Restore scroll immediately
         ScrollManager.enableScroll(source);
+        
+        // Remove modal from DOM after a brief delay
+        requestAnimationFrame(() => {
+            if (modal && modal.parentNode) {
+                modal.remove();
+            }
+        });
+    } catch (error) {
+        console.error('Error closing modal:', error);
+        // Fallback: force remove
+        if (modal && modal.parentNode) {
+            modal.remove();
+        }
+        ScrollManager.forceEnableScroll();
     }
 }
 
@@ -1243,6 +1267,10 @@ const ClientManager = {
                 const isInactive = client.is_active === false;
                 const cardClass = `client-card ${isInactive ? 'inactive' : ''}`;
                 
+                // Get phone from owner or direct phone field
+                const clientPhone = client.phone || (client.owner && client.owner.phone) || '';
+                console.log(`Client ${client.id} (${client.name}) phone:`, clientPhone);
+                
                 return `
                     <div class="${cardClass}" ${!isInactive ? `onclick="ClientManager.viewClientDetails(${client.id})"` : ''}>
                         <div class="card-header">
@@ -1264,8 +1292,8 @@ const ClientManager = {
                         </div>
                         <div class="client-actions" onclick="event.stopPropagation()">
                             ${!isInactive ? `
-                                <button class="phone-btn" onclick="ClientManager.copyPhone('${client.phone || ''}')">
-                                    📞 ${client.phone || (currentLanguage === 'ar' ? 'لا يوجد هاتف' : 'No phone')}
+                                <button class="phone-btn" onclick="ClientManager.copyPhone('${clientPhone}')">
+                                    📞 ${clientPhone || (currentLanguage === 'ar' ? 'لا يوجد هاتف' : 'No phone')}
                                 </button>
                                 <button class="location-btn ${client.location ? 'location-set' : 'location-undefined'}" onclick="ClientManager.openLocation('${client.location || ''}')" title="${client.location ? (currentLanguage === 'ar' ? 'فتح الموقع' : 'Open Location') : (currentLanguage === 'ar' ? 'لا يوجد موقع' : 'No Location')}">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
