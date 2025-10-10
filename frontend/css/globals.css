@@ -1930,40 +1930,48 @@ section h2 .status-count {
         font-size: 0.7rem;
     }
     
-    /* Minimal mobile cards - name only */
-    .product-card .product-image,
+    /* Compact mobile cards - show essential content */
+    .product-card .product-image {
+        height: 60px;
+        margin-bottom: 0.5rem;
+    }
+    
     .product-card .prices-grid {
-        display: none;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
     }
     
     .product-card {
-        padding: 1rem;
+        padding: 0.75rem;
         text-align: center;
-        min-height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        min-height: auto;
+        display: block;
         position: relative;
     }
     
     .product-card h3 {
-        font-size: 0.9rem;
-        margin: 0;
+        font-size: 0.85rem;
+        margin: 0 0 0.5rem 0;
         line-height: 1.2;
-        flex: 1;
+        flex: none;
     }
     
-    /* Show stylish buttons on mobile */
+    /* Show stylish buttons below content on mobile */
     .product-card .product-actions {
         display: flex !important;
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        gap: 0.25rem;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 0.25rem;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        position: static;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        gap: 0.5rem;
+        background: transparent;
+        padding: 0.5rem 0 0 0;
+        border-radius: 0;
+        box-shadow: none;
+        justify-content: center;
     }
     
     .report-card .report-header {
