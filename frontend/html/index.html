@@ -33,6 +33,7 @@
                     <li><a href="#clients" onclick="navigateAndCloseSidebar('clients')" data-ar="إدارة العملاء" data-en="Manage Clients">👥 <span data-ar="إدارة العملاء" data-en="Manage Clients">إدارة العملاء</span></a></li>
                     <li><a href="#products" onclick="navigateAndCloseSidebar('products')" data-ar="إدارة المنتجات" data-en="Manage Products">📦 <span data-ar="إدارة المنتجات" data-en="Manage Products">إدارة المنتجات</span></a></li>
                     <li><a href="#reports" onclick="navigateAndCloseSidebar('reports')" data-ar="تقارير الزيارات" data-en="Visit Reports">📈 <span data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</span></a></li>
+                    <li id="systemSettingsMenuItem" style="display: none;"><a href="#settings" onclick="navigateAndCloseSidebar('settings')" data-ar="إعدادات النظام" data-en="System Settings">⚙️ <span data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</span></a></li>
                 </ul>
             </nav>
             
@@ -171,6 +172,43 @@
             </div>
             <div class="reports-grid" id="reportsList">
                 <!-- Visit report cards will be populated here -->
+            </div>
+        </section>
+        
+        <section id="settings" style="display: none;">
+            <h2 data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</h2>
+            <div class="settings-container">
+                <div class="settings-card">
+                    <h3 data-ar="إعدادات التسعير" data-en="Pricing Settings">إعدادات التسعير</h3>
+                    <div class="form-group">
+                        <label for="priceTolerance" data-ar="نطاق التسعير المسموح" data-en="Price Tolerance">نطاق التسعير المسموح:</label>
+                        <div class="input-group">
+                            <input type="number" id="priceTolerance" step="0.01" min="0" max="100" placeholder="0.00">
+                            <span class="input-suffix" data-ar="ريال" data-en="SAR">ريال</span>
+                        </div>
+                        <small class="form-help" data-ar="الحد الأقصى للفرق المسموح به بين السعر المعروض والسعر الفعلي" data-en="Maximum allowed difference between displayed and actual price">الحد الأقصى للفرق المسموح به بين السعر المعروض والسعر الفعلي</small>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSystemSettings()" data-ar="حفظ الإعدادات" data-en="Save Settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24">
+                            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                        </svg>
+                        <span data-ar="حفظ الإعدادات" data-en="Save Settings">حفظ الإعدادات</span>
+                    </button>
+                </div>
+                
+                <div class="settings-card">
+                    <h3 data-ar="معلومات النظام" data-en="System Information">معلومات النظام</h3>
+                    <div class="system-info">
+                        <div class="info-item">
+                            <span class="info-label" data-ar="إصدار النظام" data-en="System Version">إصدار النظام:</span>
+                            <span class="info-value">1.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label" data-ar="آخر تحديث" data-en="Last Updated">آخر تحديث:</span>
+                            <span class="info-value">يناير 2025</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

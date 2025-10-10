@@ -5702,3 +5702,158 @@ ProductManager.displayFilteredProducts = function(products) {
         `).join('');
     }
 };
+
+// Show specific section and hide others
+function showSection(sectionId) {
+    // Hide all sections
+    const sections = document.querySelectorAll('main section');
+    sections.forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show the requested section
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+    
+    // Load section-specific data
+    switch(sectionId) {
+        case 'dashboard':
+            loadDashboardData();
+            break;
+        case 'clients':
+            ClientManager.loadClients();
+            break;
+        case 'products':
+            ProductManager.loadProducts();
+            break;
+        case 'reports':
+            ReportManager.loadReports();
+            break;
+        case 'settings':
+            loadSystemSettings();
+            break;
+    }
+}
+
+// Initialize the application
+function initializeApp() {
+    // Check if user is logged in
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+    
+    // Set up user interface based on role
+    setupUserInterface();
+    
+    // Show dashboard by default
+    showSection('dashboard');
+    
+    // Initialize sidebar
+    initializeSidebar();
+}
+
+// Set up user interface based on role
+function setupUserInterface() {
+    try {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const isSuperAdmin = userInfo.role === 'super_admin';
+        
+        console.log('User role:', userInfo.role, 'Is super admin:', isSuperAdmin);
+        
+        // Show/hide system settings menu item
+        const systemSettingsMenuItem = document.getElementById('systemSettingsMenuItem');
+        if (systemSettingsMenuItem) {
+            if (isSuperAdmin) {
+                systemSettingsMenuItem.style.display = 'block';
+                console.log('System settings menu shown for super admin');
+            } else {
+                systemSettingsMenuItem.style.display = 'none';
+                console.log('System settings menu hidden for non-super admin');
+            }
+        } else {
+            console.log('System settings menu item not found');
+        }
+        
+        // Update user greeting
+        const userGreeting = document.getElementById('userGreeting');
+        if (userGreeting && userInfo.username) {
+            userGreeting.textContent = currentLanguage === 'ar' ? 
+                `مرحباً، ${userInfo.username}` : 
+                `Welcome, ${userInfo.username}`;
+        }
+        
+    } catch (error) {
+        console.error('Error setting up user interface:', error);
+    }
+}
+
+// Load system settings
+function loadSystemSettings() {
+    try {
+        // Load current settings from the backend
+        fetch(`${API_BASE_URL}/settings`, {
+            headers: getAuthHeaders()
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Settings loaded:', data);
+            const priceToleranceInput = document.getElementById('priceTolerance');
+            if (priceToleranceInput && data.price_tolerance && data.price_tolerance.value) {
+                priceToleranceInput.value = data.price_tolerance.value;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading system settings:', error);
+        });
+    } catch (error) {
+        console.error('Error loading system settings:', error);
+    }
+}
+
+// Save system settings
+function saveSystemSettings() {
+    try {
+        const priceTolerance = document.getElementById('priceTolerance').value;
+        
+        const settings = {
+            price_tolerance: parseFloat(priceTolerance) || 0
+        };
+        
+        fetch(`${API_BASE_URL}/settings/price-tolerance`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
+            body: JSON.stringify(settings)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Save response:', data);
+            if (data.message && data.message.includes('successfully')) {
+                alert(currentLanguage === 'ar' ? 'تم حفظ الإعدادات بنجاح' : 'Settings saved successfully');
+            } else {
+                alert(currentLanguage === 'ar' ? 'فشل في حفظ الإعدادات' : 'Failed to save settings');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving system settings:', error);
+            alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء حفظ الإعدادات' : 'Error saving settings');
+        });
+    } catch (error) {
+        console.error('Error saving system settings:', error);
+        alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء حفظ الإعدادات' : 'Error saving settings');
+    }
+}
+
+// Get authentication headers
+function getAuthHeaders() {
+    const token = localStorage.getItem('authToken');
+    return {
+        'Authorization': `Bearer ${token}`
+    };
+}
