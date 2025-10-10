@@ -624,7 +624,7 @@ const ClientManager = {
             <div class="modal-content large-modal">
                 <div class="modal-header">
                     <h3>${currentLanguage === 'ar' ? 'إضافة عميل جديد' : 'Add New Client'}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    <button class="js-modal-close">&times;</button>
                 </div>
                 <form id="addClientForm" onsubmit="ClientManager.saveNewClient(event)">
                     
@@ -729,7 +729,7 @@ const ClientManager = {
                     </div>
 
                     <div class="modal-actions">
-                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        <button type="button" class="btn btn-secondary js-modal-cancel">
                             ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
                         </button>
                         <button type="submit" class="btn btn-primary">
@@ -740,8 +740,23 @@ const ClientManager = {
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
+        // Open modal and disable scroll
+        openModalAndDisableScroll(modal, 'addClientForm');
+        
+        // Setup proper close handlers
+        const closeButton = modal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'addClientForm-close-btn');
+            });
+        }
+        
+        const cancelButton = modal.querySelector('.js-modal-cancel');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'addClientForm-cancel-btn');
+            });
+        }
     },
     
     saveNewClient: async function(event) {
@@ -1508,7 +1523,7 @@ const ClientManager = {
         // Update modal with actual content (thumbnail is now available!)
         modal.innerHTML = `
             <div class="expanded-content">
-                <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
+                <button class="js-modal-close">&times;</button>
                 
                 <div class="expanded-header">
                     <div class="expanded-image">
@@ -1649,26 +1664,46 @@ const ClientManager = {
                 </div>
                 
                 <div class="expanded-actions">
-                    <button class="btn btn-primary" onclick="ClientManager.editClient(${client.id}); this.closest('.expanded-modal').remove();">
+                    <button class="btn btn-primary js-edit-and-close">
                         <svg viewBox="0 0 24 24" width="16" height="16">
                             <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                         </svg>
                         ${currentLanguage === 'ar' ? 'تعديل العميل' : 'Edit Client'}
                     </button>
-                    <button class="btn btn-secondary" onclick="this.closest('.expanded-modal').remove()">
+                    <button class="btn btn-secondary js-modal-cancel">
                         ${currentLanguage === 'ar' ? 'إغلاق' : 'Close'}
                     </button>
                 </div>
             </div>
         `;
         
-        // Modal is already shown and scroll disabled from loading state
+        // Setup proper close handlers
+        const closeButton = modal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'viewClientDetails-close-btn');
+            });
+        }
+        
+        const cancelButton = modal.querySelector('.js-modal-cancel');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'viewClientDetails-cancel-btn');
+            });
+        }
+        
+        const editButton = modal.querySelector('.js-edit-and-close');
+        if (editButton) {
+            editButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'viewClientDetails-edit-btn');
+                ClientManager.editClient(client.id);
+            });
+        }
         
         // Close modal when clicking outside
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
-                modal.remove();
-                ScrollManager.enableScroll();
+                closeModalAndRestoreScroll(modal, 'viewClientDetails-overlay-click');
             }
         });
         
@@ -1890,7 +1925,7 @@ const ClientManager = {
             <div class="modal-content large-modal">
                 <div class="modal-header">
                     <h3>${currentLanguage === 'ar' ? 'تعديل العميل' : 'Edit Client'}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    <button class="js-modal-close">&times;</button>
                 </div>
                 <form id="editClientForm" onsubmit="ClientManager.saveClient(event, ${client.id}); return false;">
                     
@@ -2025,7 +2060,7 @@ const ClientManager = {
                     </div>
 
                     <div class="modal-actions">
-                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        <button type="button" class="btn btn-secondary js-modal-cancel">
                             ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
                         </button>
                         <button type="submit" class="btn btn-primary">
@@ -2036,8 +2071,23 @@ const ClientManager = {
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
+        // Open modal and disable scroll
+        openModalAndDisableScroll(modal, 'editClientForm');
+        
+        // Setup proper close handlers
+        const closeButton = modal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'editClientForm-close-btn');
+            });
+        }
+        
+        const cancelButton = modal.querySelector('.js-modal-cancel');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'editClientForm-cancel-btn');
+            });
+        }
         
         } catch (error) {
             console.error('Error loading client for edit:', error);
@@ -2800,7 +2850,7 @@ const ProductManager = {
                 <div class="modal-content">
                     <div class="modal-header">
                         <h3>${currentLanguage === 'ar' ? 'تعديل المنتج' : 'Edit Product'}</h3>
-                        <button class="modal-close" onclick="ProductManager.closeEditModal()">×</button>
+                        <button class="js-modal-close">×</button>
                     </div>
                     <form class="edit-product-form" onsubmit="ProductManager.saveProduct(event, ${productId})">
                         <div class="form-group">
@@ -2869,7 +2919,7 @@ const ProductManager = {
                             <small class="form-help">${currentLanguage === 'ar' ? 'يمكنك اختيار عدة صور للمعرض' : 'You can select multiple images for gallery'}</small>
                         </div>
                         <div class="modal-actions">
-                            <button type="button" class="btn btn-secondary" onclick="ProductManager.closeEditModal()">
+                            <button type="button" class="btn btn-secondary js-modal-cancel">
                                 ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
                             </button>
                             <button type="submit" class="btn btn-primary">
@@ -2884,6 +2934,28 @@ const ProductManager = {
         // Add modal to page
         document.body.insertAdjacentHTML('beforeend', editForm);
         
+        // Get the modal and setup handlers
+        const modal = document.getElementById('editProductModal');
+        if (modal) {
+            // Open modal and disable scroll
+            openModalAndDisableScroll(modal, 'editProductForm');
+            
+            // Setup proper close handlers
+            const closeButton = modal.querySelector('.js-modal-close');
+            if (closeButton) {
+                closeButton.addEventListener('click', () => {
+                    closeModalAndRestoreScroll(modal, 'editProductForm-close-btn');
+                });
+            }
+            
+            const cancelButton = modal.querySelector('.js-modal-cancel');
+            if (cancelButton) {
+                cancelButton.addEventListener('click', () => {
+                    closeModalAndRestoreScroll(modal, 'editProductForm-cancel-btn');
+                });
+            }
+        }
+        
         } catch (error) {
             console.error('Error loading product for edit:', error);
             alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء تحميل بيانات المنتج' : 'Error loading product data');
@@ -2893,7 +2965,7 @@ const ProductManager = {
     closeEditModal: function() {
         const modal = document.getElementById('editProductModal');
         if (modal) {
-            modal.remove();
+            closeModalAndRestoreScroll(modal, 'closeEditModal-function');
         }
     },
     
@@ -3002,7 +3074,7 @@ const ProductManager = {
         // Show loading state
         expandedModal.innerHTML = `
             <div class="expanded-content">
-                <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                <button class="js-modal-close">&times;</button>
                 <div class="loading-state">
                     <div class="modern-spinner">
                         <div class="spinner-ring"></div>
@@ -3025,10 +3097,18 @@ const ProductManager = {
             if (!response.ok) {
                 expandedModal.innerHTML = `
                     <div class="expanded-content">
-                        <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                        <button class="js-modal-close">&times;</button>
                         <p class="error-text">${currentLanguage === 'ar' ? 'فشل تحميل بيانات المنتج' : 'Failed to load product data'}</p>
                     </div>
                 `;
+                
+                // Setup close handler for error state
+                const closeBtn = expandedModal.querySelector('.js-modal-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        closeModalAndRestoreScroll(expandedModal, 'viewExpanded-error-close');
+                    });
+                }
                 return;
             }
             
@@ -3060,7 +3140,7 @@ const ProductManager = {
         // Set modal content
         expandedModal.innerHTML = `
             <div class="expanded-content">
-                <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                <button class="js-modal-close">&times;</button>
                 
                 <div class="expanded-header">
                     <div class="expanded-image-large" onclick="ProductManager.viewProductImages(${product.id}, 0)">
@@ -3095,12 +3175,18 @@ const ProductManager = {
             </div>
         `;
         
-        // Modal is already active and scroll disabled from loading state
+        // Setup proper close handlers
+        const closeButton = expandedModal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(expandedModal, 'viewExpanded-close-btn');
+            });
+        }
         
         // Close modal when clicking outside
         expandedModal.addEventListener('click', function(e) {
             if (e.target === expandedModal) {
-                ProductManager.closeExpanded();
+                closeModalAndRestoreScroll(expandedModal, 'viewExpanded-overlay-click');
             }
         });
         
@@ -3108,10 +3194,18 @@ const ProductManager = {
             console.error('Error loading product for expanded view:', error);
             expandedModal.innerHTML = `
                 <div class="expanded-content">
-                    <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                    <button class="js-modal-close">&times;</button>
                     <p class="error-text">${currentLanguage === 'ar' ? 'حدث خطأ أثناء تحميل بيانات المنتج' : 'Error loading product data'}</p>
                 </div>
             `;
+            
+            // Setup close handler for error state
+            const closeBtn = expandedModal.querySelector('.js-modal-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    closeModalAndRestoreScroll(expandedModal, 'viewExpanded-error-close');
+                });
+            }
         }
     },
     
@@ -3119,7 +3213,7 @@ const ProductManager = {
         const expandedModal = document.getElementById('expandedModal');
         if (expandedModal) {
             expandedModal.classList.remove('active');
-            ScrollManager.enableScroll();
+            closeModalAndRestoreScroll(expandedModal, 'closeExpanded-function');
         }
     },
     
@@ -3287,7 +3381,7 @@ const ProductManager = {
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>${currentLanguage === 'ar' ? 'إضافة منتج جديد' : 'Add New Product'}</h3>
-                    <button class="modal-close" onclick="ProductManager.closeAddModal()">&times;</button>
+                    <button class="js-modal-close">&times;</button>
                 </div>
                 <form class="edit-product-form" onsubmit="ProductManager.saveNewProduct(event)">
                     <div class="form-group">
@@ -3330,7 +3424,7 @@ const ProductManager = {
                     </div>
                     
                     <div class="modal-actions">
-                        <button type="button" class="btn btn-secondary" onclick="ProductManager.closeAddModal()">
+                        <button type="button" class="btn btn-secondary js-modal-cancel">
                             ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
                         </button>
                         <button type="submit" class="btn btn-primary">
@@ -3341,15 +3435,29 @@ const ProductManager = {
             </div>
         `;
         
-        modal.style.display = 'flex';
-        ScrollManager.disableScroll();
+        // Open modal and disable scroll
+        openModalAndDisableScroll(modal, 'addProductForm');
+        
+        // Setup proper close handlers
+        const closeButton = modal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'addProductForm-close-btn');
+            });
+        }
+        
+        const cancelButton = modal.querySelector('.js-modal-cancel');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'addProductForm-cancel-btn');
+            });
+        }
     },
     
     closeAddModal: function() {
         const modal = document.getElementById('addProductModal');
         if (modal) {
-            modal.style.display = 'none';
-            ScrollManager.enableScroll();
+            closeModalAndRestoreScroll(modal, 'closeAddModal-function');
         }
     },
     
@@ -3733,7 +3841,7 @@ const ReportManager = {
             <div class="modal-content large-modal">
                 <div class="modal-header">
                     <h3>${currentLanguage === 'ar' ? 'إضافة تقرير زيارة جديد' : 'Add New Visit Report'}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    <button class="js-modal-close">&times;</button>
                 </div>
                 <form id="addReportForm" onsubmit="ReportManager.saveNewReport(event)">
                     
@@ -3886,7 +3994,7 @@ const ReportManager = {
                     </div>
 
                     <div class="modal-actions">
-                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        <button type="button" class="btn btn-secondary js-modal-cancel">
                             ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
                         </button>
                         <button type="submit" class="btn btn-primary">
@@ -3897,8 +4005,23 @@ const ReportManager = {
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
+        // Open modal and disable scroll
+        openModalAndDisableScroll(modal, 'addReportForm');
+        
+        // Setup proper close handlers
+        const closeButton = modal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'addReportForm-close-btn');
+            });
+        }
+        
+        const cancelButton = modal.querySelector('.js-modal-cancel');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'addReportForm-cancel-btn');
+            });
+        }
         
         // Load clients and products for the dropdowns
         this.loadClientsForDropdown();
@@ -4771,7 +4894,7 @@ const ReportManager = {
             modal.className = 'expanded-modal';
             modal.innerHTML = `
                 <div class="expanded-content">
-                    <button class="expanded-close" onclick="this.closest('.expanded-modal').remove()">&times;</button>
+                    <button class="js-modal-close">&times;</button>
                     
                     <div class="expanded-header">
                         <div class="expanded-title">
@@ -4879,16 +5002,37 @@ const ReportManager = {
                 </div>
                 
                 <div class="expanded-actions">
-                    <button class="btn btn-secondary" onclick="this.closest('.expanded-modal').remove(); ScrollManager.enableScroll();">
+                    <button class="btn btn-secondary js-modal-cancel">
                         ${currentLanguage === 'ar' ? 'إغلاق' : 'Close'}
                     </button>
                 </div>
             </div>
         `;
         
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
-        ScrollManager.disableScroll();
+        // Open modal and disable scroll
+        openModalAndDisableScroll(modal, 'viewReportForm');
+        
+        // Setup proper close handlers
+        const closeButton = modal.querySelector('.js-modal-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'viewReport-close-btn');
+            });
+        }
+        
+        const cancelButton = modal.querySelector('.js-modal-cancel');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', () => {
+                closeModalAndRestoreScroll(modal, 'viewReport-cancel-btn');
+            });
+        }
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModalAndRestoreScroll(modal, 'viewReport-overlay-click');
+            }
+        });
         
         // Lazy load images after modal is displayed
         if (report.image_count > 0) {
