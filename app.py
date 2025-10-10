@@ -1188,6 +1188,43 @@ def get_product_thumbnail(current_user, product_id):
         print(f"Error fetching thumbnail for product {product_id}: {e}")
         return jsonify({'message': 'Failed to fetch thumbnail', 'error': str(e)}), 500
 
+@app.route('/api/products/<int:product_id>', methods=['GET'])
+@token_required
+def get_single_product(current_user, product_id):
+    """Get a single product with ALL details (thumbnail + images) - for edit and expand views"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Product not found'}), 404
+        
+        # Get additional images
+        additional_images = []
+        for img in product.images:
+            additional_images.append({
+                'id': img.id,
+                'filename': img.filename,
+                'data': base64.b64encode(img.image_data).decode('utf-8')
+            })
+        
+        product_data = {
+            'id': product.id,
+            'name': product.name,
+            'taxed_price_store': float(product.taxed_price_store) if product.taxed_price_store else 0.0,
+            'untaxed_price_store': float(product.untaxed_price_store) if product.untaxed_price_store else 0.0,
+            'taxed_price_client': float(product.taxed_price_client) if product.taxed_price_client else 0.0,
+            'untaxed_price_client': float(product.untaxed_price_client) if product.untaxed_price_client else 0.0,
+            'thumbnail': base64.b64encode(product.thumbnail).decode('utf-8') if product.thumbnail else None,
+            'images': additional_images,
+            'image_count': len(additional_images),
+            'created_at': product.created_at.isoformat() if product.created_at else None
+        }
+        
+        return jsonify(product_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching product {product_id}: {e}")
+        return jsonify({'message': 'Failed to fetch product', 'error': str(e)}), 500
+
 @app.route('/api/products/<int:product_id>/images', methods=['GET'])
 @token_required
 def get_product_images(current_user, product_id):

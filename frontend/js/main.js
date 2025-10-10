@@ -2635,18 +2635,20 @@ const ProductManager = {
         }
     },
     
-    editProduct: function(productId) {
-        // Find the product data
-        const products = this.currentProducts || [];
-        const product = products.find(p => p.id === productId);
-        
-        if (!product) {
-            alert(currentLanguage === 'ar' ? 'المنتج غير موجود' : 'Product not found');
-            return;
-        }
-        
-        // Debug: Log product data to see if images is present
-        console.log('Product images:', product.images);
+    editProduct: async function(productId) {
+        // Fetch FULL product details including thumbnail and images
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                alert(currentLanguage === 'ar' ? 'فشل تحميل بيانات المنتج' : 'Failed to load product data');
+                return;
+            }
+            
+            const product = await response.json();
+            console.log('Product loaded for editing with images:', product.images);
         
         // Create edit form
         const editForm = `
@@ -2737,6 +2739,11 @@ const ProductManager = {
         
         // Add modal to page
         document.body.insertAdjacentHTML('beforeend', editForm);
+        
+        } catch (error) {
+            console.error('Error loading product for edit:', error);
+            alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء تحميل بيانات المنتج' : 'Error loading product data');
+        }
     },
     
     closeEditModal: function() {
@@ -2838,17 +2845,8 @@ const ProductManager = {
         });
     },
     
-    viewExpanded: function(productId) {
-        // Find the product data
-        const products = this.currentProducts || [];
-        const product = products.find(p => p.id === productId);
-        
-        if (!product) {
-            alert(currentLanguage === 'ar' ? 'المنتج غير موجود' : 'Product not found');
-            return;
-        }
-        
-        // Create expanded modal if it doesn't exist
+    viewExpanded: async function(productId) {
+        // Show loading modal first
         let expandedModal = document.getElementById('expandedModal');
         if (!expandedModal) {
             expandedModal = document.createElement('div');
@@ -2857,24 +2855,59 @@ const ProductManager = {
             document.body.appendChild(expandedModal);
         }
         
-        // Get thumbnail image
+        // Show loading state
+        expandedModal.innerHTML = `
+            <div class="expanded-content">
+                <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                <div class="loading-state">
+                    <div class="modern-spinner">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                    </div>
+                    <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل بيانات المنتج...' : 'Loading product data...'}</p>
+                </div>
+            </div>
+        `;
+        expandedModal.classList.add('active');
+        ScrollManager.disableScroll();
+        
+        // Fetch FULL product details including thumbnail and images
+        try {
+            const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (!response.ok) {
+                expandedModal.innerHTML = `
+                    <div class="expanded-content">
+                        <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                        <p class="error-text">${currentLanguage === 'ar' ? 'فشل تحميل بيانات المنتج' : 'Failed to load product data'}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const product = await response.json();
+            console.log('Product loaded for viewing:', product);
+        
+        // Get thumbnail image (now we have it loaded!)
         const thumbnailImage = product.thumbnail 
             ? `<img src="data:image/jpeg;base64,${product.thumbnail}" alt="${product.name}">`
             : product.name.charAt(0).toUpperCase();
         
-        // Build gallery images with lazy loading
+        // Build gallery images (now loaded immediately!)
         let galleryHtml = '';
-        if (product.image_count > 0) {
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
             galleryHtml = `
-                <div class="image-gallery additional-images-section" id="product-expanded-${product.id}">
-                    <h4 class="gallery-title">${currentLanguage === 'ar' ? 'معرض الصور' : 'Image Gallery'} (${product.image_count})</h4>
+                <div class="image-gallery additional-images-section">
+                    <h4 class="gallery-title">${currentLanguage === 'ar' ? 'معرض الصور' : 'Image Gallery'} (${product.images.length})</h4>
                     <div class="gallery-grid">
-                        <div class="modern-spinner">
-                            <div class="spinner-ring"></div>
-                            <div class="spinner-ring"></div>
-                            <div class="spinner-ring"></div>
-                        </div>
-                        <p class="loading-text">${currentLanguage === 'ar' ? 'جاري تحميل الصور...' : 'Loading images...'}</p>
+                        ${product.images.map((img, index) => `
+                            <div class="gallery-item" onclick="ProductManager.viewProductImages(${product.id}, ${index + 1})">
+                                <img src="data:image/jpeg;base64,${img.data}" alt="${img.filename || product.name}">
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             `;
@@ -2918,14 +2951,7 @@ const ProductManager = {
             </div>
         `;
         
-        // Show modal
-        expandedModal.classList.add('active');
-        ScrollManager.disableScroll();
-        
-        // Lazy load images after modal is displayed
-        if (product.image_count > 0) {
-            this.loadProductImages(product.id);
-        }
+        // Modal is already active and scroll disabled from loading state
         
         // Close modal when clicking outside
         expandedModal.addEventListener('click', function(e) {
@@ -2933,6 +2959,16 @@ const ProductManager = {
                 ProductManager.closeExpanded();
             }
         });
+        
+        } catch (error) {
+            console.error('Error loading product for expanded view:', error);
+            expandedModal.innerHTML = `
+                <div class="expanded-content">
+                    <button class="expanded-close" onclick="ProductManager.closeExpanded()">&times;</button>
+                    <p class="error-text">${currentLanguage === 'ar' ? 'حدث خطأ أثناء تحميل بيانات المنتج' : 'Error loading product data'}</p>
+                </div>
+            `;
+        }
     },
     
     closeExpanded: function() {
