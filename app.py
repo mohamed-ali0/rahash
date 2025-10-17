@@ -225,16 +225,16 @@ def get_client_names_only(current_user):
 @app.route('/api/products/names', methods=['GET'])
 @token_required
 def get_product_names_only(current_user):
-    """Get ONLY product IDs and names - ultra lightweight for dropdowns"""
+    """Get product IDs, names, and internal prices for dropdowns"""
     try:
         from sqlalchemy import text
         
-        # Use raw SQL for maximum speed - only get ID and name
-        query = text("SELECT id, name FROM products ORDER BY name")
+        # Use raw SQL for maximum speed - get ID, name, and internal price
+        query = text("SELECT id, name, taxed_price_store FROM products ORDER BY name")
         result = db.session.execute(query).fetchall()
         
-        # Return minimal data - just ID and name
-        products = [{'id': row[0], 'name': row[1]} for row in result]
+        # Return data with internal price
+        products = [{'id': row[0], 'name': row[1], 'internal_price': float(row[2]) if row[2] else 0.0} for row in result]
         
         return jsonify(products), 200
         

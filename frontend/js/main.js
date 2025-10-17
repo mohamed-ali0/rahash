@@ -4459,6 +4459,13 @@ const ReportManager = {
                 const searchTerm = e.target.value.toLowerCase();
                 this.filterProductOptions(dropdown, searchTerm);
                 hiddenInput.value = ''; // Clear selection when typing
+                
+                // Remove all internal price displays when product is cleared
+                const productGroup = container.closest('.product-group');
+                if (productGroup) {
+                    const existingDisplays = productGroup.querySelectorAll('.internal-price-display');
+                    existingDisplays.forEach(display => display.remove());
+                }
             });
             
             // Handle item selection
@@ -4470,6 +4477,11 @@ const ReportManager = {
                     searchInput.value = text;
                     hiddenInput.value = value;
                     dropdown.style.display = 'none';
+                    
+                    // Display internal price for the selected product
+                    if (value) {
+                        this.displayInternalPrice(container, value);
+                    }
                     
                     // Refresh all product dropdowns to exclude the newly selected product
                     this.refreshAllProductDropdowns();
@@ -4651,6 +4663,42 @@ const ReportManager = {
                 this.filterProductOptions(dropdown, searchInput.value.toLowerCase());
             }
         });
+    },
+    
+    displayInternalPrice: function(container, productId) {
+        // Find the selected product from our stored data
+        const product = this.productsData.find(p => p.id == productId);
+        
+        // Find the product group (parent container) to look for existing displays
+        const productGroup = container.closest('.product-group');
+        if (productGroup) {
+            // Remove ALL existing internal price displays in the product group
+            const existingDisplays = productGroup.querySelectorAll('.internal-price-display');
+            existingDisplays.forEach(display => display.remove());
+        }
+        
+        if (!product) {
+            // If product not found (e.g., selection cleared), just return
+            return;
+        }
+        
+        // Create a single new internal price display element
+        const priceDisplay = document.createElement('div');
+        priceDisplay.className = 'internal-price-display';
+        
+        // Update the display with internal price
+        const priceText = currentLanguage === 'ar' ? 
+            `سعر رهش: ${product.internal_price.toFixed(2)} ريال` : 
+            `Rahash Price: ${product.internal_price.toFixed(2)} SAR`;
+        priceDisplay.textContent = priceText;
+        
+        // Insert after the product select container
+        container.parentNode.insertBefore(priceDisplay, container.nextSibling);
+        
+        // Show the price display with animation
+        setTimeout(() => {
+            priceDisplay.classList.add('show');
+        }, 10);
     },
     
     updateRemoveProductButtons: function() {

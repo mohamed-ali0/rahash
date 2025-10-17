@@ -5,6 +5,30 @@
     box-sizing: border-box;
 }
 
+/* Internal Price Display Styles */
+.internal-price-display {
+    background: #e8f4fd;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    font-size: 14px;
+    color: #0066cc;
+    font-weight: 500;
+    display: none;
+    transition: all 0.3s ease;
+}
+
+.internal-price-display.show {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Load More Button Styles */
 .load-more-button {
     display: flex;
