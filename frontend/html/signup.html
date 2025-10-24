@@ -16,8 +16,11 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <h1 data-ar="إنشاء حساب جديد" data-en="Create Account">إنشاء حساب جديد</h1>
-                <p data-ar="ابدأ رحلتك معنا" data-en="Start your journey with us">ابدأ رحلتك معنا</p>
+                <div class="logo-container">
+                    <img src="/logo.png" alt="Logo" class="auth-logo">
+                </div>
+                <h1 data-ar="إنشاء حساب جديد" data-en="Create New Account">إنشاء حساب جديد</h1>
+                <p data-ar="قم بإنشاء حساب جديد للوصول إلى النظام" data-en="Create a new account to access the system">قم بإنشاء حساب جديد للوصول إلى النظام</p>
             </div>
             
             <form class="auth-form" id="signupForm">
@@ -33,21 +36,12 @@
                 
                 <div class="form-group">
                     <label for="password" data-ar="كلمة المرور" data-en="Password">كلمة المرور</label>
-                    <input type="password" id="password" name="password" required minlength="6">
+                    <input type="password" id="password" name="password" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="confirmPassword" data-ar="تأكيد كلمة المرور" data-en="Confirm Password">تأكيد كلمة المرور</label>
                     <input type="password" id="confirmPassword" name="confirmPassword" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="role" data-ar="الدور الوظيفي" data-en="Role">الدور الوظيفي</label>
-                    <select id="role" name="role" required>
-                        <option value="" data-ar="اختر الدور" data-en="Select Role">اختر الدور</option>
-                        <option value="sales_supervisor" data-ar="مشرف مبيعات" data-en="Sales Supervisor">مشرف مبيعات</option>
-                        <option value="salesman" data-ar="مندوب مبيعات" data-en="Salesman">مندوب مبيعات</option>
-                    </select>
                 </div>
                 
                 <button type="submit" class="btn btn-primary" data-ar="إنشاء الحساب" data-en="Create Account">إنشاء الحساب</button>

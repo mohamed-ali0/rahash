@@ -138,11 +138,45 @@ def login_page():
     """Serve login page"""
     return app.send_static_file('html/login.html')
 
-# Signup disabled
-# @app.route('/signup')
-# def signup_page():
-#     """Serve signup page"""
-#     return app.send_static_file('html/signup.html')
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    """User registration"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data.get('username') or not data.get('email') or not data.get('password'):
+            return jsonify({'message': 'Username, email, and password are required'}), 400
+        
+        # Check if user already exists
+        existing_user = User.query.filter(
+            (User.username == data['username']) | (User.email == data['email'])
+        ).first()
+        
+        if existing_user:
+            return jsonify({'message': 'Username or email already exists'}), 400
+        
+        # Create new user
+        user = User(
+            username=data['username'],
+            email=data['email'],
+            password_hash=generate_password_hash(data['password']),
+            role=UserRole.SALESMAN  # Default role for new users
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        return jsonify({'message': 'User registered successfully'}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Registration failed', 'error': str(e)}), 500
+
+@app.route('/signup')
+def signup_page():
+    """Serve signup page"""
+    return app.send_static_file('html/signup.html')
 
 @app.route('/dashboard')
 def dashboard():
