@@ -20,11 +20,15 @@ class User(db.Model):
     username = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.Enum(UserRole), nullable=False)
+    supervisor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # For salesman to link to supervisor
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     clients = db.relationship('Client', back_populates='assigned_user', lazy=True)
     visit_reports = db.relationship('VisitReport', backref='user', lazy=True)
+    
+    # Supervisor-Salesman relationship
+    salesmen = db.relationship('User', backref=db.backref('supervisor', remote_side=[id]), lazy=True)
     
     def __repr__(self):
         return f'<User {self.username}>'

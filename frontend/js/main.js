@@ -364,6 +364,12 @@ function showSection(sectionId) {
                 const savedReportStatus = localStorage.getItem('reportStatusFilter') || 'active';
                 ReportManager.loadReports(savedReportStatus);
                 break;
+            case 'team':
+                // Load team management for supervisors
+                TeamManager.loadSalesmen();
+                TeamManager.loadAllClients();
+                document.getElementById('assignmentSection').style.display = 'block';
+                break;
             case 'settings':
                 // Only show settings for super admin
                 const userInfo = localStorage.getItem('userInfo');
@@ -567,6 +573,19 @@ function setupUserInterface() {
                 userGreeting.textContent = `${currentLanguage === 'ar' ? 'مرحباً' : 'Hello'}, ${user.username}`;
             }
 
+            // Show Team Management for supervisors and admins
+            const teamMenuItem = document.getElementById('teamManagementMenuItem');
+            if (teamMenuItem) {
+                const isSupervisor = user.role === 'sales_supervisor' || user.role === 'super_admin';
+                if (isSupervisor) {
+                    teamMenuItem.style.display = 'list-item';
+                    console.log('Team management menu shown for supervisor');
+                } else {
+                    teamMenuItem.style.display = 'none';
+                    console.log('Team management menu hidden for non-supervisor');
+                }
+            }
+            
             // Hide System Settings for non-super-admin users
             const settingsMenuItem = document.getElementById('systemSettingsMenuItem');
             if (settingsMenuItem) {
@@ -1254,6 +1273,19 @@ const ClientManager = {
     
     displayClients: function(clients, append = false) {
         const clientsList = document.getElementById('clientsList');
+        
+        // Check if user is salesman (no edit/delete permissions)
+        const userInfo = localStorage.getItem('userInfo');
+        let canEdit = true;
+        if (userInfo) {
+            try {
+                const user = JSON.parse(userInfo);
+                canEdit = user.role !== 'salesman';
+            } catch (e) {
+                console.error('Error parsing user info:', e);
+            }
+        }
+        
         if (clients.length === 0 && !append) {
             clientsList.innerHTML = `
                 <div class="empty-state">
@@ -1262,7 +1294,7 @@ const ClientManager = {
                 </div>
             `;
         } else {
-            // Display clients cards with edit/delete buttons
+            // Display clients cards with edit/delete buttons (if allowed)
             const cardsHTML = clients.map(client => {
                 const isInactive = client.is_active === false;
                 const cardClass = `client-card ${isInactive ? 'inactive' : ''}`;
@@ -1302,27 +1334,31 @@ const ClientManager = {
                                     </svg>
                                     ${client.location ? '' : '!'}
                                 </button>
-                                <div class="symbol-buttons">
-                                    <button class="btn-icon-stylish btn-edit-stylish" onclick="ClientManager.editClient(${client.id})" title="${currentLanguage === 'ar' ? 'تعديل العميل' : 'Edit Client'}">
-                                        <svg viewBox="0 0 24 24" width="16" height="16">
-                                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                                        </svg>
-                                    </button>
-                                    <button class="btn-icon-stylish btn-delete-stylish" onclick="ClientManager.deleteClient(${client.id})" title="${currentLanguage === 'ar' ? 'إلغاء تفعيل' : 'Deactivate'}">
-                                        <svg viewBox="0 0 24 24" width="16" height="16">
-                                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                        </svg>
-                                    </button>
-                                </div>
+                                ${canEdit ? `
+                                    <div class="symbol-buttons">
+                                        <button class="btn-icon-stylish btn-edit-stylish" onclick="ClientManager.editClient(${client.id})" title="${currentLanguage === 'ar' ? 'تعديل العميل' : 'Edit Client'}">
+                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-icon-stylish btn-delete-stylish" onclick="ClientManager.deleteClient(${client.id})" title="${currentLanguage === 'ar' ? 'إلغاء تفعيل' : 'Deactivate'}">
+                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ` : ''}
                             ` : `
-                                <div style="flex: 1;"></div>
-                                <div class="symbol-buttons">
-                                    <button class="btn-icon-stylish reactivate-btn" onclick="ClientManager.reactivateClient(${client.id})" title="${currentLanguage === 'ar' ? 'إعادة تفعيل' : 'Reactivate'}">
-                                        <svg viewBox="0 0 24 24" width="16" height="16">
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                        </svg>
-                                    </button>
-                                </div>
+                                ${canEdit ? `
+                                    <div style="flex: 1;"></div>
+                                    <div class="symbol-buttons">
+                                        <button class="btn-icon-stylish reactivate-btn" onclick="ClientManager.reactivateClient(${client.id})" title="${currentLanguage === 'ar' ? 'إعادة تفعيل' : 'Reactivate'}">
+                                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ` : ''}
                             `}
                         </div>
                     </div>
@@ -4686,10 +4722,10 @@ const ReportManager = {
         const priceDisplay = document.createElement('div');
         priceDisplay.className = 'internal-price-display';
         
-        // Update the display with internal price
+        // Update the display with both internal price and client price
         const priceText = currentLanguage === 'ar' ? 
-            `سعر رهش: ${product.internal_price.toFixed(2)} ريال` : 
-            `Rahash Price: ${product.internal_price.toFixed(2)} SAR`;
+            `سعر رهش: ${product.internal_price.toFixed(2)} ريال | سعر العميل: ${product.client_price.toFixed(2)} ريال` : 
+            `Rahash Price: ${product.internal_price.toFixed(2)} SAR | Client Price: ${product.client_price.toFixed(2)} SAR`;
         priceDisplay.textContent = priceText;
         
         // Insert after the product select container
@@ -5738,6 +5774,227 @@ const ReportManager = {
         } catch (error) {
             // If observer fails, button still works manually
             console.log(`⚠️ Auto-load observer failed for ${type} (button will work manually only):`, error);
+        }
+    }
+};
+
+// =====================================================
+// TEAM MANAGEMENT (Supervisors)
+// =====================================================
+
+const TeamManager = {
+    currentSalesmen: [],
+    allClients: [],
+    
+    loadSalesmen: async function() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/supervisors/salesmen`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const salesmen = await response.json();
+                this.currentSalesmen = salesmen;
+                this.displaySalesmen(salesmen);
+                this.populateSalesmanSelect(salesmen);
+            } else {
+                console.error('Failed to load salesmen');
+            }
+        } catch (error) {
+            console.error('Error loading salesmen:', error);
+        }
+    },
+    
+    displaySalesmen: function(salesmen) {
+        const salesmenList = document.getElementById('salesmenList');
+        
+        if (salesmen.length === 0) {
+            salesmenList.innerHTML = `
+                <div class="empty-state">
+                    <p>${currentLanguage === 'ar' ? 'لا يوجد مندوبين مسجلين' : 'No salesmen registered'}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        salesmenList.innerHTML = salesmen.map(salesman => `
+            <div class="salesman-card" onclick="TeamManager.viewSalesmanClients(${salesman.id})">
+                <div class="salesman-header">
+                    <div class="salesman-avatar">👤</div>
+                    <div class="salesman-info">
+                        <h3>${salesman.username}</h3>
+                        <p>${salesman.email}</p>
+                    </div>
+                </div>
+                <div class="salesman-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">${currentLanguage === 'ar' ? 'العملاء' : 'Clients'}</span>
+                        <span class="stat-value">${salesman.client_count}</span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="event.stopPropagation(); TeamManager.viewSalesmanClients(${salesman.id})">
+                    ${currentLanguage === 'ar' ? 'عرض العملاء' : 'View Clients'}
+                </button>
+            </div>
+        `).join('');
+    },
+    
+    populateSalesmanSelect: function(salesmen) {
+        const select = document.getElementById('salesmanSelect');
+        if (!select) return;
+        
+        select.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'اختر مندوب' : 'Select Salesman'}</option>`;
+        salesmen.forEach(salesman => {
+            const option = document.createElement('option');
+            option.value = salesman.id;
+            option.textContent = salesman.username;
+            select.appendChild(option);
+        });
+    },
+    
+    viewSalesmanClients: async function(salesmanId) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/supervisors/salesmen/${salesmanId}/clients`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const clients = await response.json();
+                this.displaySalesmanClients(salesmanId, clients);
+            } else {
+                alert(currentLanguage === 'ar' ? 'فشل في تحميل العملاء' : 'Failed to load clients');
+            }
+        } catch (error) {
+            console.error('Error loading salesman clients:', error);
+        }
+    },
+    
+    displaySalesmanClients: function(salesmanId, clients) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        
+        const salesman = this.currentSalesmen.find(s => s.id === salesmanId);
+        const salesmanName = salesman ? salesman.username : 'Salesman';
+        
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${currentLanguage === 'ar' ? 'عملاء' : 'Clients of'} ${salesmanName}</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    ${clients.length === 0 ? 
+                        `<p class="no-data">${currentLanguage === 'ar' ? 'لا يوجد عملاء مخصصين' : 'No clients assigned'}</p>` :
+                        `<div class="clients-list">
+                            ${clients.map(client => `
+                                <div class="client-item">
+                                    <span class="client-name">${client.name}</span>
+                                    <span class="client-region">${client.region || ''}</span>
+                                    <button class="btn btn-sm btn-danger" onclick="TeamManager.unassignClient(${client.id})">
+                                        ${currentLanguage === 'ar' ? 'إلغاء التعيين' : 'Unassign'}
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>`
+                    }
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    },
+    
+    loadAllClients: async function() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/list`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.allClients = data.clients || data;
+                this.populateClientSelect();
+            }
+        } catch (error) {
+            console.error('Error loading clients:', error);
+        }
+    },
+    
+    populateClientSelect: function() {
+        const select = document.getElementById('clientAssignSelect');
+        if (!select) return;
+        
+        select.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'اختر عميل' : 'Select Client'}</option>`;
+        this.allClients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client.id;
+            option.textContent = client.name;
+            select.appendChild(option);
+        });
+    },
+    
+    assignClient: async function() {
+        const salesmanId = document.getElementById('salesmanSelect').value;
+        const clientId = document.getElementById('clientAssignSelect').value;
+        
+        if (!salesmanId || !clientId) {
+            alert(currentLanguage === 'ar' ? 'الرجاء اختيار مندوب وعميل' : 'Please select a salesman and client');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/supervisors/assign-client`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    salesman_id: parseInt(salesmanId),
+                    client_id: parseInt(clientId)
+                })
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم تعيين العميل بنجاح' : 'Client assigned successfully');
+                this.loadSalesmen();
+                document.getElementById('clientAssignSelect').value = '';
+            } else {
+                const error = await response.json();
+                alert(error.message || (currentLanguage === 'ar' ? 'فشل في تعيين العميل' : 'Failed to assign client'));
+            }
+        } catch (error) {
+            console.error('Error assigning client:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
+        }
+    },
+    
+    unassignClient: async function(clientId) {
+        if (!confirm(currentLanguage === 'ar' ? 'هل تريد إلغاء تعيين هذا العميل؟' : 'Unassign this client?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/supervisors/unassign-client/${clientId}`, {
+                method: 'PUT',
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم إلغاء التعيين بنجاح' : 'Client unassigned successfully');
+                // Close modal and reload
+                document.querySelector('.modal-overlay')?.remove();
+                this.loadSalesmen();
+            } else {
+                const error = await response.json();
+                alert(error.message || (currentLanguage === 'ar' ? 'فشل في إلغاء التعيين' : 'Failed to unassign client'));
+            }
+        } catch (error) {
+            console.error('Error unassigning client:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
         }
     }
 };

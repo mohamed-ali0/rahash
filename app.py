@@ -156,12 +156,30 @@ def register():
         if existing_user:
             return jsonify({'message': 'Username or email already exists'}), 400
         
+        # Determine role
+        role = data.get('role', 'salesman')  # Default to salesman
+        if role == 'sales_supervisor':
+            user_role = UserRole.SALES_SUPERVISOR
+        elif role == 'salesman':
+            user_role = UserRole.SALESMAN
+        else:
+            user_role = UserRole.SALESMAN  # Fallback
+        
+        # Get supervisor_id if provided (only for salesmen)
+        supervisor_id = data.get('supervisor_id')
+        if user_role == UserRole.SALESMAN and supervisor_id:
+            # Verify supervisor exists
+            supervisor = User.query.get(supervisor_id)
+            if not supervisor or supervisor.role != UserRole.SALES_SUPERVISOR:
+                return jsonify({'message': 'Invalid supervisor'}), 400
+        
         # Create new user
         user = User(
             username=data['username'],
             email=data['email'],
             password_hash=generate_password_hash(data['password']),
-            role=UserRole.SALESMAN  # Default role for new users
+            role=user_role,
+            supervisor_id=supervisor_id if user_role == UserRole.SALESMAN else None
         )
         
         db.session.add(user)
@@ -263,12 +281,12 @@ def get_product_names_only(current_user):
     try:
         from sqlalchemy import text
         
-        # Use raw SQL for maximum speed - get ID, name, and internal price
-        query = text("SELECT id, name, taxed_price_store FROM products ORDER BY name")
+        # Use raw SQL for maximum speed - get ID, name, internal price, and client price
+        query = text("SELECT id, name, taxed_price_store, taxed_price_client FROM products ORDER BY name")
         result = db.session.execute(query).fetchall()
         
-        # Return data with internal price
-        products = [{'id': row[0], 'name': row[1], 'internal_price': float(row[2]) if row[2] else 0.0} for row in result]
+        # Return data with internal price and client price
+        products = [{'id': row[0], 'name': row[1], 'internal_price': float(row[2]) if row[2] else 0.0, 'client_price': float(row[3]) if row[3] else 0.0} for row in result]
         
         return jsonify(products), 200
         
@@ -518,11 +536,24 @@ def get_clients_list(current_user):
         
         # Build query
         if current_user.role == UserRole.SUPER_ADMIN:
+            # Super admin sees all clients
             if show_all:
                 query = Client.query
             else:
                 query = Client.query.filter_by(is_active=True)
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            # Supervisor sees clients assigned to them + their salesmen's clients
+            # Get all salesman IDs under this supervisor
+            salesmen = User.query.filter_by(supervisor_id=current_user.id, role=UserRole.SALESMAN).all()
+            salesman_ids = [s.id for s in salesmen]
+            salesman_ids.append(current_user.id)  # Include supervisor's own clients
+            
+            if show_all:
+                query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids))
+            else:
+                query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids), Client.is_active == True)
         else:
+            # Salesmen see only their own clients
             if show_all:
                 query = Client.query.filter_by(assigned_user_id=current_user.id)
             else:
@@ -936,8 +967,18 @@ def update_client(current_user, client_id):
         if not client:
             return jsonify({'message': 'Client not found'}), 404
         
-        # Check permission
-        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+        # Check permission - SALESMEN CANNOT EDIT CLIENTS
+        if current_user.role == UserRole.SALESMAN:
+            return jsonify({'message': 'Salesmen cannot edit clients'}), 403
+        
+        # Supervisors can only edit clients assigned to their salesmen
+        if current_user.role == UserRole.SALES_SUPERVISOR:
+            assigned_user = User.query.get(client.assigned_user_id)
+            if not assigned_user or assigned_user.supervisor_id != current_user.id:
+                return jsonify({'message': 'Permission denied'}), 403
+        
+        # Super admin can edit all
+        if current_user.role != UserRole.SUPER_ADMIN and current_user.role != UserRole.SALES_SUPERVISOR:
             return jsonify({'message': 'Permission denied'}), 403
         
         data = request.get_json()
@@ -1092,8 +1133,18 @@ def deactivate_client(current_user, client_id):
         if not client:
             return jsonify({'message': 'Client not found'}), 404
         
-        # Check permission
-        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
+        # Check permission - SALESMEN CANNOT DELETE CLIENTS
+        if current_user.role == UserRole.SALESMAN:
+            return jsonify({'message': 'Salesmen cannot delete clients'}), 403
+        
+        # Supervisors can only delete clients assigned to their salesmen
+        if current_user.role == UserRole.SALES_SUPERVISOR:
+            assigned_user = User.query.get(client.assigned_user_id)
+            if not assigned_user or assigned_user.supervisor_id != current_user.id:
+                return jsonify({'message': 'Permission denied'}), 403
+        
+        # Super admin can delete all
+        if current_user.role != UserRole.SUPER_ADMIN and current_user.role != UserRole.SALES_SUPERVISOR:
             return jsonify({'message': 'Permission denied'}), 403
         
         client.is_active = False
@@ -1602,6 +1653,203 @@ def update_system_settings(current_user):
         traceback.print_exc()
         return jsonify({'message': 'Failed to save settings', 'error': str(e)}), 500
 
+# =====================================================
+# SUPERVISOR-SALESMAN MANAGEMENT ROUTES
+# =====================================================
+
+@app.route('/api/supervisors/salesmen', methods=['GET'])
+@token_required
+def get_supervisor_salesmen(current_user):
+    """Get all salesmen under current supervisor"""
+    try:
+        # Check if user is supervisor
+        if current_user.role not in [UserRole.SALES_SUPERVISOR, UserRole.SUPER_ADMIN]:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Get salesmen for this supervisor
+        if current_user.role == UserRole.SALES_SUPERVISOR:
+            salesmen = User.query.filter_by(supervisor_id=current_user.id, role=UserRole.SALESMAN).all()
+        else:
+            # Super admin can see all salesmen
+            salesmen = User.query.filter_by(role=UserRole.SALESMAN).all()
+        
+        salesmen_data = []
+        for salesman in salesmen:
+            # Count assigned clients
+            client_count = Client.query.filter_by(assigned_user_id=salesman.id, is_active=True).count()
+            
+            salesmen_data.append({
+                'id': salesman.id,
+                'username': salesman.username,
+                'email': salesman.email,
+                'supervisor_id': salesman.supervisor_id,
+                'client_count': client_count,
+                'created_at': salesman.created_at.isoformat()
+            })
+        
+        return jsonify(salesmen_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching salesmen: {e}")
+        return jsonify({'message': 'Failed to fetch salesmen', 'error': str(e)}), 500
+
+@app.route('/api/supervisors/salesmen/<int:salesman_id>/clients', methods=['GET'])
+@token_required
+def get_salesman_clients(current_user, salesman_id):
+    """Get all clients assigned to a specific salesman"""
+    try:
+        # Verify salesman exists and belongs to this supervisor
+        salesman = User.query.get(salesman_id)
+        if not salesman:
+            return jsonify({'message': 'Salesman not found'}), 404
+        
+        # Permission check
+        if current_user.role == UserRole.SALES_SUPERVISOR and salesman.supervisor_id != current_user.id:
+            return jsonify({'message': 'Permission denied'}), 403
+        elif current_user.role not in [UserRole.SALES_SUPERVISOR, UserRole.SUPER_ADMIN]:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        # Get clients
+        clients = Client.query.filter_by(assigned_user_id=salesman_id, is_active=True).all()
+        
+        clients_data = []
+        for client in clients:
+            clients_data.append({
+                'id': client.id,
+                'name': client.name,
+                'region': client.region,
+                'salesman_name': client.salesman_name
+            })
+        
+        return jsonify(clients_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching salesman clients: {e}")
+        return jsonify({'message': 'Failed to fetch clients', 'error': str(e)}), 500
+
+@app.route('/api/supervisors/assign-client', methods=['POST'])
+@token_required
+def assign_client_to_salesman(current_user):
+    """Assign a client to a salesman (supervisor only)"""
+    try:
+        # Check if user is supervisor or admin
+        if current_user.role not in [UserRole.SALES_SUPERVISOR, UserRole.SUPER_ADMIN]:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        data = request.get_json()
+        client_id = data.get('client_id')
+        salesman_id = data.get('salesman_id')
+        
+        if not client_id or not salesman_id:
+            return jsonify({'message': 'client_id and salesman_id are required'}), 400
+        
+        # Verify salesman belongs to this supervisor
+        salesman = User.query.get(salesman_id)
+        if not salesman or salesman.role != UserRole.SALESMAN:
+            return jsonify({'message': 'Invalid salesman'}), 400
+        
+        if current_user.role == UserRole.SALES_SUPERVISOR and salesman.supervisor_id != current_user.id:
+            return jsonify({'message': 'Salesman does not belong to you'}), 403
+        
+        # Get and update client
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        client.assigned_user_id = salesman_id
+        db.session.commit()
+        
+        return jsonify({'message': 'Client assigned successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error assigning client: {e}")
+        return jsonify({'message': 'Failed to assign client', 'error': str(e)}), 500
+
+@app.route('/api/supervisors/unassign-client/<int:client_id>', methods=['PUT'])
+@token_required
+def unassign_client_from_salesman(current_user):
+    """Remove client from salesman (supervisor only)"""
+    try:
+        # Check if user is supervisor or admin
+        if current_user.role not in [UserRole.SALES_SUPERVISOR, UserRole.SUPER_ADMIN]:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        client = Client.query.get(client_id)
+        if not client:
+            return jsonify({'message': 'Client not found'}), 404
+        
+        # Verify the salesman belongs to this supervisor
+        if current_user.role == UserRole.SALES_SUPERVISOR:
+            salesman = User.query.get(client.assigned_user_id)
+            if salesman and salesman.supervisor_id != current_user.id:
+                return jsonify({'message': 'Permission denied'}), 403
+        
+        # For unassignment, we can either set to NULL or to supervisor
+        # Let's assign back to supervisor
+        client.assigned_user_id = current_user.id
+        db.session.commit()
+        
+        return jsonify({'message': 'Client unassigned successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error unassigning client: {e}")
+        return jsonify({'message': 'Failed to unassign client', 'error': str(e)}), 500
+
+@app.route('/api/users/all', methods=['GET'])
+@token_required
+def get_all_users(current_user):
+    """Get all users (for super admin and supervisors)"""
+    try:
+        if current_user.role not in [UserRole.SUPER_ADMIN, UserRole.SALES_SUPERVISOR]:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        if current_user.role == UserRole.SUPER_ADMIN:
+            users = User.query.all()
+        else:
+            # Supervisors see only their salesmen
+            users = User.query.filter_by(supervisor_id=current_user.id).all()
+        
+        users_data = []
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role.value,
+                'supervisor_id': user.supervisor_id,
+                'created_at': user.created_at.isoformat()
+            })
+        
+        return jsonify(users_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching users: {e}")
+        return jsonify({'message': 'Failed to fetch users', 'error': str(e)}), 500
+
+@app.route('/api/supervisors/all', methods=['GET'])
+@token_required
+def get_all_supervisors(current_user):
+    """Get all supervisors (for user registration)"""
+    try:
+        # Anyone can see list of supervisors for assignment
+        supervisors = User.query.filter_by(role=UserRole.SALES_SUPERVISOR).all()
+        
+        supervisors_data = []
+        for supervisor in supervisors:
+            supervisors_data.append({
+                'id': supervisor.id,
+                'username': supervisor.username,
+                'email': supervisor.email
+            })
+        
+        return jsonify(supervisors_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching supervisors: {e}")
+        return jsonify({'message': 'Failed to fetch supervisors', 'error': str(e)}), 500
+
 # Dashboard Stats Route
 @app.route('/api/dashboard/stats', methods=['GET'])
 @token_required
@@ -1663,11 +1911,24 @@ def get_visit_reports_list(current_user):
         
         # Build query
         if current_user.role == UserRole.SUPER_ADMIN:
+            # Super admin sees all reports
             if show_all:
                 query = VisitReport.query
             else:
                 query = VisitReport.query.filter_by(is_active=True)
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            # Supervisor sees their own reports + their salesmen's reports
+            # Get all salesman IDs under this supervisor
+            salesmen = User.query.filter_by(supervisor_id=current_user.id, role=UserRole.SALESMAN).all()
+            salesman_ids = [s.id for s in salesmen]
+            salesman_ids.append(current_user.id)  # Include supervisor's own reports
+            
+            if show_all:
+                query = VisitReport.query.filter(VisitReport.user_id.in_(salesman_ids))
+            else:
+                query = VisitReport.query.filter(VisitReport.user_id.in_(salesman_ids), VisitReport.is_active == True)
         else:
+            # Salesmen see only their own reports
             if show_all:
                 query = VisitReport.query.filter_by(user_id=current_user.id)
             else:

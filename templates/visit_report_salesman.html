@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تقرير زيارة عميل</title>
+    <style>
+        @font-face {
+            font-family: 'QaysSansPro';
+            src: url('/font/ArbFONTS-HTQaysSansPro-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'QaysSansPro';
+            src: url('/font/ArbFONTS-HTQaysSansPro-Regular.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'QaysSansPro', 'Traditional Arabic', 'Simplified Arabic', 'Arial', sans-serif;
+            background: #e0e0e0;
+            direction: rtl;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+                background: white;
+            }
+        }
+        
+        /* A4 Page */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        /* Mobile Page Responsive */
+        @media (max-width: 768px) {
+            .page {
+                width: 100% !important;
+                max-width: 100vw !important;
+                min-width: 100% !important;
+                padding: 15px !important;
+                box-sizing: border-box !important;
+                box-shadow: none;
+                margin: 0 !important;
+            }
+            
+            .document-title {
+                font-size: 16pt !important;
+            }
+            
+            .info-line {
+                font-size: 12pt !important;
+                word-break: break-word;
+            }
+            
+            .images-table,
+            .products-table {
+                width: 100% !important;
+                font-size: 10pt !important;
+                overflow-x: auto;
+            }
+            
+            .images-table td {
+                padding: 5px !important;
+            }
+            
+            .products-table th,
+            .products-table td {
+                padding: 6px 4px !important;
+                font-size: 9pt !important;
+            }
+            
+            .notes-content {
+                font-size: 11pt !important;
+            }
+            
+            .corner-logo {
+                max-width: 30mm !important;
+                max-height: 15mm !important;
+            }
+            
+            .signature-section {
+                margin-top: 20px !important;
+                padding: 15px 10px !important;
+            }
+            
+            .signature-label {
+                font-size: 12pt !important;
+            }
+            
+            .signature-image {
+                max-width: 200px !important;
+            }
+        }
+        
+        /* Corner Logo */
+        .corner-logo {
+            position: absolute;
+            top: 10mm;
+            left: 10mm;
+            max-width: 52mm; /* Increased by 30% from 40mm */
+            max-height: 26mm; /* Increased by 30% from 20mm */
+            object-fit: contain;
+            z-index: 10;
+        }
+        
+        /* Title - matching Word's style */
+        .document-title {
+            text-align: center;
+            font-size: 19.8pt; /* Increased by 10% from 18pt */
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #23407C;
+        }
+        
+        /* Info lines - matching Word's formatting */
+        .info-container {
+            margin-bottom: 15px;
+        }
+        
+        .info-line {
+            font-size: 15.4pt; /* Increased by 10% from 14pt */
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .info-line span.label {
+            color: #23407C;
+        }
+        
+        .info-line span.value {
+            font-weight: normal;
+            color: #23407C;
+            margin-right: 10px;
+        }
+        
+        /* Images table - matching Word's table style */
+        .images-section {
+            margin: 20px 0;
+        }
+        
+        .images-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .images-table td {
+            width: 33.33%; /* Keep original width for 3 columns */
+            height: 180px; /* 16:9 aspect ratio: width/16*9 = 33.33%/16*9 ≈ 18.75% of container height */
+            border: 1px solid #90EE90;
+            text-align: center;
+            vertical-align: middle;
+            padding: 5px;
+            position: relative;
+        }
+        
+        .image-cell {
+            font-size: 13.2pt; /* Increased by 10% from 12pt */
+            color: #23407C;
+        }
+        
+        .actual-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Maintains 16:9 aspect ratio while filling the cell */
+            object-position: center; /* Centers the image within the cell */
+        }
+        
+        /* Notes section - matching Word's table */
+        .notes-section {
+            margin: 20px 0;
+        }
+        
+        .notes-box {
+            width: 100%;
+            border: 1px solid #90EE90;
+            min-height: 100px;
+            padding: 10px;
+        }
+        
+        .notes-header {
+            font-size: 13.2pt; /* Increased by 10% from 12pt */
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #23407C;
+        }
+        
+        .notes-text {
+            font-size: 13.2pt; /* Increased by 10% from 12pt */
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            color: #23407C;
+        }
+        
+        /* Products table - matching Word's exact table */
+        .products-section {
+            margin: 20px 0;
+        }
+        
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.1pt; /* Increased by 10% from 11pt */
+        }
+        
+        .products-table th,
+        .products-table td {
+            border: 1px solid #90EE90;
+            padding: 5px 3px;
+            text-align: center;
+            height: 25px;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            color: #23407C;
+        }
+        
+        .products-table th {
+            background-color: #d9d9d9;
+            font-weight: bold;
+            font-size: 12.1pt; /* Increased by 10% from 11pt */
+            color: #23407C;
+        }
+        
+        .products-table td {
+            font-size: 12.1pt; /* Increased by 10% from 11pt */
+            color: #23407C;
+        }
+        
+        /* Column widths matching Word */
+        .col-num { width: 5%; }
+        .col-product { 
+            width: 35%; 
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+        .col-our-price { width: 15%; }
+        .col-store-price { width: 15%; }
+        .col-date { width: 15%; }
+        .col-units { width: 15%; }
+        
+        /* Suggested Products Images Section */
+        .suggested-products-section {
+            margin-top: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .suggested-products-section .section-title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #23407C;
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: linear-gradient(135deg, #fff5f5, #ffe8e8);
+            border: 2px solid #90EE90;
+            border-radius: 8px;
+        }
+        
+        /* Client Signature Section */
+        .signature-section {
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 2px solid #CA9E3F;
+            page-break-inside: avoid;
+        }
+        
+        .signature-label {
+            font-size: 15.4pt;
+            font-weight: bold;
+            color: #23407C;
+            margin-bottom: 10px;
+        }
+        
+        /* Fullscreen overlay for signature drawing */
+        .signature-fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        
+        .signature-canvas-container {
+            border: 3px solid #23407C;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        
+        /* Responsive canvas sizing with 16:9 ratio */
+        #signatureCanvas {
+            display: block;
+            cursor: crosshair;
+            touch-action: none;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+        
+        @media (max-width: 768px) {
+            .signature-canvas-container {
+                width: 90vw;
+                height: 60vh;  /* Taller - 60% of viewport height */
+            }
+            
+            #signatureCanvas {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .signature-canvas-container {
+                width: 80vw;
+                height: 50vh;  /* Taller - 50% of viewport height */
+                max-width: 1000px;
+            }
+            
+            #signatureCanvas {
+                width: 100%;
+                height: 100%;
+            }
+        }
+        
+        .signature-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .signature-image {
+            width: 250px;
+            height: 90px;
+            max-width: 250px;
+            object-fit: contain;
+        }
+        
+        .btn-rotate {
+            background: #9B59B6;
+        }
+        
+        .btn-signature {
+            padding: 12px 24px;
+            font-size: 14pt;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #4472C4;
+            color: white;
+            min-height: 48px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            user-select: none;
+        }
+        
+        .btn-signature:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-signature:active {
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
+        
+        .btn-clear {
+            background: #E74C3C;
+        }
+        
+        .btn-done {
+            background: #27AE60;
+        }
+        
+        @media (max-width: 768px) {
+            .btn-signature {
+                padding: 14px 20px;
+                font-size: 13pt;
+                min-width: 80px;
+            }
+            
+            .signature-controls {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+        }
+        
+        /* Control buttons */
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .btn {
+            padding: 10px 25px;
+            margin: 0 10px;
+            font-size: 15.4pt; /* Increased by 10% from 14pt */
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #4472C4;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-print {
+            background: #70AD47;
+        }
+        
+        .btn-pdf {
+            background: #ED7D31;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .page {
+                width: 100%;
+                min-height: initial;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+            }
+            
+            .controls {
+                display: none !important;
+            }
+            
+            /* Hide signature controls when printing */
+            #addSignatureBtn,
+            #signaturePadContainer,
+            .signature-controls,
+            .signature-fullscreen-overlay {
+                display: none !important;
+            }
+            
+            /* Ensure signature image is visible when printing */
+            #signatureDisplay {
+                display: block !important;
+            }
+            
+            .signature-image {
+                width: 250px !important;
+                height: 90px !important;
+                max-width: 250px !important;
+                object-fit: contain;
+                page-break-inside: avoid;
+            }
+            
+            .products-table th {
+                background-color: #d9d9d9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Corner Logo -->
+        <img src="/logo_corner.png" alt="Logo" class="corner-logo">
+        
+        <!-- Document Title -->
+        <div class="document-title">تقرير زيارة عميل</div>
+        
+        <!-- Client and Date Information -->
+        <div class="info-container">
+            <div class="info-line">
+                <span class="label">العميل:</span>
+                <span class="value" id="client-name">اسم_عميل</span>
+            </div>
+            <div class="info-line">
+                <span class="label">العنوان:</span>
+                <span class="value" id="client-address">-</span>
+            </div>
+            <div class="info-line">
+                <span class="label">رقم التواصل:</span>
+                <span class="value" id="client-phone">-</span>
+            </div>
+            <div class="info-line">
+                <span class="label">التاريخ:</span>
+                <span class="value" id="visit-date">
+                    <span id="visit-day"></span>
+                    <span> - </span>
+                    <span id="visit-date-gregorian"></span>
+                    <span> - </span>
+                    <span id="visit-date-islamic"></span>
+                </span>
+            </div>
+            <div class="info-line">
+                <span class="label">المندوب:</span>
+                <span class="value" id="salesman-name">-</span>
+            </div>
+        </div>
+        
+        <!-- Images Table (3 cells) -->
+        <div class="images-section">
+            <table class="images-table">
+                <tr>
+                    <td>
+                        <div class="image-cell" id="image-3">صورة_3</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="image-2">صورة_2</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="image-1">صورة_1</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Notes Section -->
+        <div class="notes-section">
+            <div class="notes-box">
+                <div class="notes-header">ملاحظات</div>
+                <div class="notes-text" id="notes-content">ملحوظات</div>
+            </div>
+        </div>
+        
+        <!-- Products Table -->
+        <div class="products-section">
+            <table class="products-table">
+                <thead>
+                    <tr>
+                        <th class="col-num">م</th>
+                        <th class="col-product">اسم المنتج</th>
+                        <th class="col-our-price">سعر رهش</th>
+                        <th class="col-store-price">السعر بالمحل</th>
+                        <th class="col-date">تاريخ الانتهاء</th>
+                        <th class="col-units">العدد</th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody">
+                    <tr>
+                        <td>1</td>
+                        <td>اسم_منتج</td>
+                        <td>سعر بيع</td>
+                        <td>سعر محل</td>
+                        <td>تاريخه</td>
+                        <td>العدد</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Suggested Products Images Section -->
+        <div class="suggested-products-section" id="suggested-products-section" style="display: none;">
+            <div class="section-title">صور المنتجات المقترحة</div>
+            <table class="images-table">
+                <tr>
+                    <td>
+                        <div class="image-cell" id="suggested-image-1">صورة مقترحة 1</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="suggested-image-2">صورة مقترحة 2</div>
+                    </td>
+                    <td>
+                        <div class="image-cell" id="suggested-image-3">صورة مقترحة 3</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Client Signature Section -->
+        <div class="signature-section">
+            <div class="signature-label">توقيع العميل:</div>
+            
+            <!-- Signature Display (shown when signature is added) -->
+            <div id="signatureDisplay" style="display: none;">
+                <img id="signatureImage" class="signature-image" alt="توقيع العميل">
+            </div>
+            
+            <!-- Add Signature Button (shown when no signature) -->
+            <div id="addSignatureBtn" style="display: block;">
+                <button id="addSignatureButton" class="btn-signature" type="button" style="position: relative; z-index: 10000;">✍️ إضافة التوقيع</button>
+            </div>
+            
+            <!-- Fullscreen Signature Canvas (shown when drawing) -->
+            <div id="signaturePadContainer" class="signature-fullscreen-overlay" style="display: none;">
+                <div class="signature-canvas-container">
+                    <canvas id="signatureCanvas"></canvas>
+                </div>
+                <div class="signature-controls">
+                    <button class="btn-signature btn-done" type="button">✅ حفظ التوقيع</button>
+                    <button class="btn-signature btn-rotate" type="button">🔄 تدوير</button>
+                    <button class="btn-signature btn-clear" type="button">🗑️ مسح</button>
+                    <button class="btn-signature btn-cancel" type="button">❌ إلغاء</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn btn-print" onclick="window.print()">🖨️ طباعة</button>
+            <button class="btn btn-pdf" onclick="convertToPDF()">📄 تحويل إلى PDF</button>
+        </div>
+    </div>
+    
+    <script>
+        // Function to populate the report with data
+        function populateReport(data) {
+            // Set client name
+            if (data.client_name) {
+                document.getElementById('client-name').textContent = data.client_name;
+            }
+            
+            // Set client phone number (owner phone)
+            if (data.client_phone) {
+                document.getElementById('client-phone').textContent = data.client_phone;
+            } else {
+                document.getElementById('client-phone').textContent = '-';
+            }
+            
+            // Set client address
+            if (data.client_address) {
+                document.getElementById('client-address').textContent = data.client_address;
+            } else {
+                document.getElementById('client-address').textContent = '-';
+            }
+            
+            // Set salesman name
+            if (data.salesman_name) {
+                document.getElementById('salesman-name').textContent = data.salesman_name;
+            } else {
+                document.getElementById('salesman-name').textContent = '-';
+            }
+            
+            // Set visit date with Day, Gregorian and Islamic (Umm al-Qura) calendars
+            if (data.visit_date) {
+                try {
+                    // Expecting format YYYY/MM/DD
+                    const parts = String(data.visit_date).split('/').map(p => parseInt(p, 10));
+                    const dateObj = (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2]))
+                        ? new Date(parts[0], parts[1] - 1, parts[2])
+                        : new Date(data.visit_date);
+
+                    const dayName = new Intl.DateTimeFormat('ar-SA', { weekday: 'long' }).format(dateObj);
+                    const gregorian = new Intl.DateTimeFormat('ar-SA-u-ca-gregory', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(dateObj);
+                    const islamic = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', { year: 'numeric', month: 'long', day: 'numeric' }).format(dateObj);
+
+                    const dayEl = document.getElementById('visit-day');
+                    const gregEl = document.getElementById('visit-date-gregorian');
+                    const islEl = document.getElementById('visit-date-islamic');
+                    if (dayEl) dayEl.textContent = dayName;
+                    if (gregEl) gregEl.textContent = gregorian;
+                    if (islEl) islEl.textContent = islamic;
+                } catch (e) {
+                    // Fallback to original string on any error
+                    const visitDateContainer = document.getElementById('visit-date');
+                    if (visitDateContainer) visitDateContainer.textContent = data.visit_date;
+                }
+            }
+            
+            // Set images
+            if (data.images && Array.isArray(data.images)) {
+                console.log('Total images:', data.images.length);
+                // Separate regular images and suggested products images
+                const regularImages = data.images.filter(img => !img.is_suggested_products);
+                const suggestedImages = data.images.filter(img => img.is_suggested_products);
+                console.log('Regular images:', regularImages.length);
+                console.log('Suggested images:', suggestedImages.length);
+                
+                // Set regular images
+                for (let i = 0; i < Math.min(3, regularImages.length); i++) {
+                    const imageCell = document.getElementById(`image-${i + 1}`);
+                    if (imageCell && regularImages[i]) {
+                        imageCell.innerHTML = `<img src="data:image/jpeg;base64,${regularImages[i].data}" class="actual-image" alt="صورة ${i + 1}">`;
+                    }
+                }
+                
+                // Set suggested products images
+                if (suggestedImages.length > 0) {
+                    const suggestedSection = document.getElementById('suggested-products-section');
+                    if (suggestedSection) {
+                        suggestedSection.style.display = 'block';
+                        
+                        for (let i = 0; i < Math.min(3, suggestedImages.length); i++) {
+                            const imageCell = document.getElementById(`suggested-image-${i + 1}`);
+                            if (imageCell && suggestedImages[i]) {
+                                imageCell.innerHTML = `<img src="data:image/jpeg;base64,${suggestedImages[i].data}" class="actual-image" alt="صورة مقترحة ${i + 1}">`;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Set notes with proper formatting (no numbering)
+            if (data.notes) {
+                const notesElement = document.getElementById('notes-content');
+                // Split notes by \n and create list without numbering
+                const notesArray = data.notes.split('\\n').filter(note => note.trim() !== '');
+                if (notesArray.length > 0) {
+                    let notesHTML = '';
+                    notesArray.forEach((note) => {
+                        // Process note to handle underlined answers and single asterisk
+                        let processedNote = note.trim();
+                        
+                        // Convert HTML <u> tags to colored style (darker golden)
+                        processedNote = processedNote.replace(/<u>(.*?)<\/u>/g, '<span style="color: #B88A2A; font-weight: bold;">$1</span>');
+                        
+                        // Remove any existing asterisks and add single asterisk
+                        processedNote = processedNote.replace(/^\*+\s*/, '');
+                        processedNote = '* ' + processedNote;
+                        
+                        // Style the single asterisk
+                        processedNote = processedNote.replace(/^\*/, '<span style="font-weight: bold; color: #CA9E3F;">*</span>');
+                        
+                        notesHTML += processedNote + '<br>';
+                    });
+                    notesElement.innerHTML = notesHTML;
+                } else {
+                    notesElement.textContent = data.notes;
+                }
+            }
+            
+            // Set products
+            if (data.products && Array.isArray(data.products)) {
+                const tbody = document.getElementById('products-tbody');
+                tbody.innerHTML = '';
+                
+                data.products.forEach((product, index) => {
+                    const row = tbody.insertRow();
+                    
+                    // Check for price mismatch using price tolerance
+                    // Tolerance only applies when displayed price is LESS than our price
+                    // If displayed price is HIGHER than our price, it's always a mismatch (no tolerance)
+                    const ourPrice = parseFloat(product.our_price_raw);
+                    const displayedPrice = parseFloat(product.displayed_price_raw);
+                    const tolerance = parseFloat(data.price_tolerance) || 1.0;
+                    
+                    console.log(`Price Check for ${product.name}:`, {
+                        ourPrice,
+                        displayedPrice,
+                        tolerance,
+                        difference: Math.abs(ourPrice - displayedPrice),
+                        threshold: ourPrice - tolerance
+                    });
+                    
+                    let hasPriceMismatch = false;
+                    if (!isNaN(ourPrice) && !isNaN(displayedPrice)) {
+                        if (displayedPrice > ourPrice) {
+                            // Displayed price is higher than ours - ALWAYS a mismatch (no tolerance for increases)
+                            console.log('  → Issue: Displayed price HIGHER than our price');
+                            hasPriceMismatch = true;
+                        } else if (displayedPrice < (ourPrice - tolerance)) {
+                            // Displayed price is too low - beyond tolerance threshold
+                            console.log(`  → Issue: Displayed price too LOW (${displayedPrice} < ${ourPrice - tolerance})`);
+                            hasPriceMismatch = true;
+                        } else {
+                            console.log('  → OK: Price within acceptable range');
+                        }
+                    } else {
+                        console.log('  → Skipping: Invalid price values');
+                    }
+                    
+                    const priceStyle = hasPriceMismatch ? 'style="color: #8B0000; font-weight: bold;"' : '';
+                    
+                    // Check if product is expired (past today's date)
+                    let isExpired = false;
+                    if (product.expiry_date) {
+                        const expiryParts = product.expiry_date.split('/');
+                        if (expiryParts.length === 3) {
+                            const expiryDateObj = new Date(expiryParts[0], expiryParts[1] - 1, expiryParts[2]);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            isExpired = expiryDateObj < today;
+                        }
+                    }
+                    
+                    const expiryStyle = isExpired ? 'style="color: #8B0000; font-weight: bold;"' : '';
+                    
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${product.name || ''}</td>
+                        <td ${priceStyle}>${product.our_price || ''}</td>
+                        <td ${priceStyle}>${product.displayed_price || ''}</td>
+                        <td ${expiryStyle}>${product.expiry_date || ''}</td>
+                        <td>${product.units_count || ''}</td>
+                    `;
+                });
+                
+                // Add empty rows if less than 4 products
+                while (tbody.rows.length < 4) {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${tbody.rows.length}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    `;
+                }
+            }
+        }
+        
+        // Function to convert to PDF
+        function convertToPDF() {
+            // Hide buttons before converting
+            document.querySelector('.controls').style.display = 'none';
+            
+            // For now, use browser's print to PDF
+            window.print();
+            
+            // Show buttons again
+            setTimeout(() => {
+                document.querySelector('.controls').style.display = 'block';
+            }, 1000);
+        }
+        
+        // ========== Signature Pad Functionality ==========
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let rotationAngle = 0;  // Track rotation: 0, 90, 180, 270
+        
+        function openSignaturePad(event) {
+            try {
+                console.log('openSignaturePad called');
+                
+                // Prevent default behavior
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                // Hide the add signature button
+                const addBtnContainer = document.getElementById('addSignatureBtn');
+                if (addBtnContainer) {
+                    addBtnContainer.style.display = 'none';
+                }
+                
+                // Show fullscreen overlay
+                const container = document.getElementById('signaturePadContainer');
+                if (!container) {
+                    alert('Error: Signature container not found');
+                    return;
+                }
+                container.style.display = 'flex';
+                
+                // Force reflow to ensure container is visible
+                container.offsetHeight;
+                
+                // Wait a moment for layout to complete
+                setTimeout(function() {
+                    try {
+                        // Initialize canvas
+                        canvas = document.getElementById('signatureCanvas');
+                        if (!canvas) {
+                            alert('Error: Canvas not found');
+                            return;
+                        }
+                        
+                        const canvasContainer = canvas.parentElement;
+                        
+                        // Get container dimensions
+                        const containerWidth = canvasContainer.offsetWidth || window.innerWidth * 0.9;
+                        const containerHeight = canvasContainer.offsetHeight || (containerWidth * 9 / 16);
+                        
+                        console.log('Container dimensions:', containerWidth, containerHeight);
+                        
+                        // Set HIGH RESOLUTION canvas - 3x scale for quality
+                        const scale = 3;
+                        canvas.width = containerWidth * scale;
+                        canvas.height = containerHeight * scale;
+                        
+                        // Set display size (CSS)
+                        canvas.style.width = containerWidth + 'px';
+                        canvas.style.height = containerHeight + 'px';
+                        
+                        ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            alert('Error: Could not get canvas context');
+                            return;
+                        }
+                        
+                        // Scale context to match high resolution
+                        ctx.scale(scale, scale);
+                        
+                        // Clear canvas
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        
+                        // Set canvas drawing properties - BOLD BLUE
+                        ctx.strokeStyle = '#23407C';  // Blue color matching the theme
+                        ctx.lineWidth = 4;  // Bolder line
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        
+                        // Reset rotation
+                        rotationAngle = 0;
+                        
+                        // Remove old event listeners to prevent duplicates
+                        canvas.removeEventListener('mousedown', startDrawing);
+                        canvas.removeEventListener('mousemove', draw);
+                        canvas.removeEventListener('mouseup', stopDrawing);
+                        canvas.removeEventListener('mouseout', stopDrawing);
+                        canvas.removeEventListener('touchstart', handleTouchStart);
+                        canvas.removeEventListener('touchmove', handleTouchMove);
+                        canvas.removeEventListener('touchend', stopDrawing);
+                        
+                        // Mouse events
+                        canvas.addEventListener('mousedown', startDrawing);
+                        canvas.addEventListener('mousemove', draw);
+                        canvas.addEventListener('mouseup', stopDrawing);
+                        canvas.addEventListener('mouseout', stopDrawing);
+                        
+                        // Touch events for mobile
+                        canvas.addEventListener('touchstart', handleTouchStart, {passive: false});
+                        canvas.addEventListener('touchmove', handleTouchMove, {passive: false});
+                        canvas.addEventListener('touchend', stopDrawing, {passive: false});
+                        
+                        console.log('Canvas initialized successfully');
+                    } catch (err) {
+                        console.error('Error initializing canvas:', err);
+                        alert('Error initializing canvas: ' + err.message);
+                    }
+                }, 100);
+                
+            } catch (err) {
+                console.error('Error opening signature pad:', err);
+                alert('Error opening signature pad: ' + err.message);
+            }
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            lastX = (e.clientX - rect.left) * scaleX / 3;  // Adjust for 3x scale
+            lastY = (e.clientY - rect.top) * scaleY / 3;
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const currentX = (e.clientX - rect.left) * scaleX / 3;
+            const currentY = (e.clientY - rect.top) * scaleY / 3;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            lastX = (touch.clientX - rect.left) * scaleX / 3;
+            lastY = (touch.clientY - rect.top) * scaleY / 3;
+            isDrawing = true;
+        }
+        
+        function handleTouchMove(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const currentX = (touch.clientX - rect.left) * scaleX / 3;
+            const currentY = (touch.clientY - rect.top) * scaleY / 3;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            
+            lastX = currentX;
+            lastY = currentY;
+        }
+        
+        function clearSignature(event) {
+            // Prevent default behavior
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            if (ctx && canvas) {
+                // Save the current scale
+                const currentScale = ctx.getTransform();
+                // Reset transform
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                // Clear entire canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Restore scale
+                ctx.setTransform(currentScale);
+            }
+        }
+        
+        function rotateSignature(event) {
+            // Prevent default behavior
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            // Save current canvas content
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Create temporary canvas to hold rotated image
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.height;
+            tempCanvas.height = canvas.width;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Rotate 90 degrees clockwise
+            tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+            tempCtx.rotate(90 * Math.PI / 180);
+            tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+            
+            // Update rotation angle
+            rotationAngle = (rotationAngle + 90) % 360;
+            
+            // Swap canvas dimensions
+            const oldWidth = canvas.width;
+            const oldHeight = canvas.height;
+            canvas.width = oldHeight;
+            canvas.height = oldWidth;
+            
+            // Redraw with rotation
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(tempCanvas, 0, 0);
+            
+            // Reapply drawing properties
+            ctx.strokeStyle = '#23407C';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+        
+        function saveSignature(event) {
+            // Prevent default behavior and event bubbling
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            // Create a temporary canvas to save HIGH RESOLUTION signature
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Save at DOUBLE resolution (500x180) for high quality, but display at 250x90
+            // This maintains quality while appearing smaller on screen
+            const highResWidth = 500;
+            const highResHeight = 180;
+            tempCanvas.width = highResWidth;
+            tempCanvas.height = highResHeight;
+            
+            // Fill with white background
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Enable high quality scaling
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            
+            // Draw the signature at high resolution
+            tempCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Convert to high quality PNG (maximum quality)
+            const signatureDataURL = tempCanvas.toDataURL('image/png', 1.0);
+            
+            // Display the signature (CSS will scale it to 250px, but image data is 500px)
+            const signatureImage = document.getElementById('signatureImage');
+            signatureImage.src = signatureDataURL;
+            // Set actual width in HTML to maintain high-res data
+            signatureImage.width = highResWidth;
+            signatureImage.height = highResHeight;
+            
+            // Hide fullscreen canvas, show signature image
+            document.getElementById('signaturePadContainer').style.display = 'none';
+            document.getElementById('signatureDisplay').style.display = 'block';
+            
+            // Show add button again (to allow editing)
+            const addBtnContainer = document.getElementById('addSignatureBtn');
+            addBtnContainer.style.display = 'block';
+            addBtnContainer.innerHTML = '<button id="editSignatureButton" class="btn-signature" type="button">✏️ تعديل التوقيع</button>';
+            
+            // Attach event listeners to the new edit button
+            const editBtn = document.getElementById('editSignatureButton');
+            if (editBtn) {
+                editBtn.addEventListener('click', openSignaturePad);
+                editBtn.addEventListener('touchstart', openSignaturePad, {passive: false});
+            }
+        }
+        
+        function cancelSignature(event) {
+            // Prevent default behavior
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            // Clear canvas
+            clearSignature();
+            
+            // Hide canvas overlay
+            const container = document.getElementById('signaturePadContainer');
+            if (container) {
+                container.style.display = 'none';
+            }
+            
+            // Show add button again
+            const addBtnContainer = document.getElementById('addSignatureBtn');
+            if (addBtnContainer) {
+                addBtnContainer.style.display = 'block';
+            }
+        }
+        
+        // Initialize signature button event listeners when page loads
+        window.addEventListener('load', function() {
+            console.log('Window loaded, initializing signature buttons');
+            
+            // Wait a bit more to ensure everything is ready
+            setTimeout(function() {
+                // Main add signature button - SIMPLE TEST
+                const addBtn = document.getElementById('addSignatureButton');
+                console.log('Looking for button, found:', addBtn);
+                
+                if (addBtn) {
+                    console.log('Add signature button found, attaching listeners');
+                    
+                    // Click handler (works on both desktop and mobile)
+                    addBtn.onclick = function(e) {
+                        console.log('Button clicked');
+                        openSignaturePad(e);
+                    };
+                    
+                    // Touch events for better mobile response
+                    addBtn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        console.log('Button touched');
+                        openSignaturePad(e);
+                    }, false);
+                    
+                    console.log('Event listeners attached successfully');
+                } else {
+                    console.error('ERROR: Add signature button not found!');
+                }
+            }, 1000);
+            
+            
+            // Control buttons (will be available when pad opens)
+            function initControlButtons() {
+                const saveBtn = document.querySelector('.btn-done');
+                const rotateBtn = document.querySelector('.btn-rotate');
+                const clearBtn = document.querySelector('.btn-clear');
+                const cancelBtn = document.querySelector('.btn-cancel');
+                
+                console.log('Initializing control buttons:', {saveBtn, rotateBtn, clearBtn, cancelBtn});
+                
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', saveSignature);
+                    saveBtn.addEventListener('touchstart', saveSignature, {passive: false});
+                }
+                if (rotateBtn) {
+                    rotateBtn.addEventListener('click', rotateSignature);
+                    rotateBtn.addEventListener('touchstart', rotateSignature, {passive: false});
+                }
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', clearSignature);
+                    clearBtn.addEventListener('touchstart', clearSignature, {passive: false});
+                }
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', cancelSignature);
+                    cancelBtn.addEventListener('touchstart', cancelSignature, {passive: false});
+                }
+            }
+            
+            // Initialize control buttons after a short delay (they're hidden initially)
+            setTimeout(initControlButtons, 500);
+        });
+        
+        // Data will be injected by the server, no need to fetch
+    </script>
+</body>
+</html>
