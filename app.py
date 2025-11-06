@@ -287,20 +287,11 @@ def get_client_names_with_salesman(current_user):
         from sqlalchemy import text
         
         # Use raw SQL for maximum speed - get id, name, region, salesman_name, and assigned_user_id
-        # Supervisors see all their salesmen's clients, admins see all clients
-        if current_user.role == UserRole.SUPER_ADMIN:
+        # For batch assignment, we need to see ALL clients to be able to assign them
+        # Both admins and supervisors see all clients
+        if current_user.role == UserRole.SUPER_ADMIN or current_user.role == UserRole.SALES_SUPERVISOR:
             query = text("SELECT id, name, region, salesman_name, assigned_user_id FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
-        elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Get all clients assigned to this supervisor's salesmen
-            query = text("""
-                SELECT c.id, c.name, c.region, c.salesman_name, c.assigned_user_id 
-                FROM clients c
-                JOIN users u ON c.assigned_user_id = u.id
-                WHERE c.is_active = 1 AND u.supervisor_id = :supervisor_id
-                ORDER BY c.name
-            """)
-            result = db.session.execute(query, {'supervisor_id': current_user.id}).fetchall()
         else:
             # Salesmen don't need batch assignment, but return empty list gracefully
             return jsonify([]), 200
