@@ -6161,8 +6161,8 @@ const TeamManager = {
                     this.applyClientFilters(clients, regionFilter, searchTerm);
                 }
             } else {
-                // Load all clients for all salesmen
-                const response = await fetch(`${API_BASE_URL}/clients/list`, {
+                // Load all clients for all salesmen (show_all=true to get complete list)
+                const response = await fetch(`${API_BASE_URL}/clients/list?show_all=true`, {
                     headers: getAuthHeaders()
                 });
                 
