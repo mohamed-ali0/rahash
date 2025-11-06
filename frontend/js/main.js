@@ -5888,8 +5888,10 @@ const TeamManager = {
     },
     
     showAssignmentSection: function() {
-        document.getElementById('assignmentSection').style.display = 'block';
-        document.getElementById('assignmentSection').scrollIntoView({ behavior: 'smooth' });
+        const section = document.getElementById('assignmentSection');
+        section.style.display = 'block';
+        // Don't use scrollIntoView - it can cause layout issues
+        // Just show the section naturally
     },
     
     hideAssignmentSection: function() {
