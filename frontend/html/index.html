@@ -285,7 +285,7 @@
                     <div id="batchAssignmentMode" style="display: none;">
                         <div class="batch-controls">
                             <div class="control-group">
-                                <label data-ar="المندوب" data-en="Salesman">المندوب</label>
+                                <label data-ar="تعيين إلى" data-en="Assign To">تعيين إلى</label>
                                 <select id="batchSalesmanSelect" class="filter-select">
                                     <option value="" data-ar="اختر مندوب" data-en="Select Salesman">اختر مندوب</option>
                                 </select>
@@ -303,6 +303,20 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- Batch Filters -->
+                        <div class="batch-filters">
+                            <select id="batchRegionFilter" class="filter-select" onchange="TeamManager.applyBatchFilters()">
+                                <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
+                            </select>
+                            <select id="batchSalesmanNameFilter" class="filter-select" onchange="TeamManager.applyBatchFilters()">
+                                <option value="" data-ar="جميع المندوبين" data-en="All Salesmen">جميع المندوبين</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" onclick="TeamManager.clearBatchFilters()">
+                                <span data-ar="مسح الفلاتر" data-en="Clear Filters">مسح الفلاتر</span>
+                            </button>
+                        </div>
+                        
                         <div id="batchClientsList" class="batch-clients-list">
                             <!-- Clients with checkboxes will appear here -->
                         </div>

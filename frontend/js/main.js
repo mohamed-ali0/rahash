@@ -6341,25 +6341,64 @@ const TeamManager = {
         const container = document.getElementById('batchClientsList');
         const searchInput = document.getElementById('batchClientSearch');
         
-        // Setup search
-        searchInput.addEventListener('input', (e) => {
-            this.filterBatchClients(e.target.value.toLowerCase().trim());
-        });
+        // Setup search (only once)
+        if (!searchInput.dataset.initialized) {
+            searchInput.addEventListener('input', (e) => {
+                this.applyBatchFilters();
+            });
+            searchInput.dataset.initialized = 'true';
+        }
         
         container.innerHTML = `<div class="loading-text">${currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>`;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/clients/names`, {
+            // Load full client list to get salesman names
+            const response = await fetch(`${API_BASE_URL}/clients/list`, {
                 headers: getAuthHeaders()
             });
             
             if (response.ok) {
-                this.allClients = await response.json();
+                const data = await response.json();
+                this.allClients = data.clients || data;
+                this.extractBatchFilters(this.allClients);
                 this.displayBatchClientsList(this.allClients);
             }
         } catch (error) {
             console.error('Error loading clients for batch:', error);
             container.innerHTML = `<div class="error-text">${currentLanguage === 'ar' ? 'خطأ في التحميل' : 'Loading error'}</div>`;
+        }
+    },
+    
+    // Extract regions and salesmen for filters
+    extractBatchFilters: function(clients) {
+        // Extract unique regions
+        const regions = [...new Set(clients.map(c => c.region).filter(r => r))].sort();
+        const regionFilter = document.getElementById('batchRegionFilter');
+        if (regionFilter) {
+            const currentValue = regionFilter.value;
+            regionFilter.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'جميع المناطق' : 'All Regions'}</option>`;
+            regions.forEach(region => {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                regionFilter.appendChild(option);
+            });
+            regionFilter.value = currentValue;
+        }
+        
+        // Extract unique salesman names
+        const salesmen = [...new Set(clients.map(c => c.salesman_name).filter(s => s))].sort();
+        const salesmanFilter = document.getElementById('batchSalesmanNameFilter');
+        if (salesmanFilter) {
+            const currentValue = salesmanFilter.value;
+            salesmanFilter.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'جميع المندوبين' : 'All Salesmen'}</option>`;
+            salesmen.forEach(salesman => {
+                const option = document.createElement('option');
+                option.value = salesman;
+                option.textContent = salesman;
+                salesmanFilter.appendChild(option);
+            });
+            salesmanFilter.value = currentValue;
         }
     },
     
@@ -6385,26 +6424,52 @@ const TeamManager = {
                     <span class="checkbox-custom"></span>
                     <div class="client-details">
                         <span class="client-name-batch">${client.name}</span>
-                        <span class="client-region-batch">${client.region || ''}</span>
+                        <div class="client-meta-batch">
+                            ${client.region ? `<span class="client-region-batch">${client.region}</span>` : ''}
+                            ${client.salesman_name ? `<span class="client-salesman-batch">${currentLanguage === 'ar' ? 'المندوب:' : 'Salesman:'} ${client.salesman_name}</span>` : ''}
+                        </div>
                     </div>
                 </label>
             </div>
         `).join('');
     },
     
-    // Filter batch clients by search term
-    filterBatchClients: function(searchTerm) {
-        if (!searchTerm) {
-            this.displayBatchClientsList(this.allClients);
-            return;
+    // Apply all batch filters (search + region + salesman)
+    applyBatchFilters: function() {
+        const searchTerm = document.getElementById('batchClientSearch').value.toLowerCase().trim();
+        const regionFilter = document.getElementById('batchRegionFilter').value;
+        const salesmanFilter = document.getElementById('batchSalesmanNameFilter').value;
+        
+        let filtered = this.allClients;
+        
+        // Apply search filter
+        if (searchTerm) {
+            filtered = filtered.filter(client =>
+                client.name.toLowerCase().includes(searchTerm) ||
+                (client.region && client.region.toLowerCase().includes(searchTerm)) ||
+                (client.salesman_name && client.salesman_name.toLowerCase().includes(searchTerm))
+            );
         }
         
-        const filtered = this.allClients.filter(client =>
-            client.name.toLowerCase().includes(searchTerm) ||
-            (client.region && client.region.toLowerCase().includes(searchTerm))
-        );
+        // Apply region filter
+        if (regionFilter) {
+            filtered = filtered.filter(client => client.region === regionFilter);
+        }
+        
+        // Apply salesman filter
+        if (salesmanFilter) {
+            filtered = filtered.filter(client => client.salesman_name === salesmanFilter);
+        }
         
         this.displayBatchClientsList(filtered);
+    },
+    
+    // Clear batch filters
+    clearBatchFilters: function() {
+        document.getElementById('batchClientSearch').value = '';
+        document.getElementById('batchRegionFilter').value = '';
+        document.getElementById('batchSalesmanNameFilter').value = '';
+        this.applyBatchFilters();
     },
     
     // Toggle individual client selection

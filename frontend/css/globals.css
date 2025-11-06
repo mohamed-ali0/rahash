@@ -4280,6 +4280,23 @@ html[lang="en"] .section-actions {
     flex-wrap: wrap;
 }
 
+.batch-filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+
+.batch-filters .filter-select {
+    flex: 1;
+    min-width: 200px;
+}
+
 .batch-clients-list {
     max-height: 500px;
     overflow-y: auto;
@@ -4352,11 +4369,28 @@ html[lang="en"] .section-actions {
     font-weight: 600;
     color: #2d3748;
     font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.client-meta-batch {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .client-region-batch {
-    font-size: 13px;
+    font-size: 12px;
+    color: #667eea;
+    background: #edf2f7;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.client-salesman-batch {
+    font-size: 12px;
     color: #718096;
+    font-weight: 500;
 }
 
 .btn.active {
