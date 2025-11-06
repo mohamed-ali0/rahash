@@ -5866,7 +5866,7 @@ const TeamManager = {
         }
         
         // Setup client search with autocomplete
-        const clientSearchInput = document.getElementById('clientSearchInput');
+        const clientSearchInput = document.getElementById('teamClientSearchInput');
         if (clientSearchInput) {
             let searchTimeout;
             clientSearchInput.addEventListener('input', (e) => {
@@ -5874,7 +5874,7 @@ const TeamManager = {
                 const searchTerm = e.target.value.toLowerCase().trim();
                 
                 if (searchTerm.length < 2) {
-                    document.getElementById('clientSearchResults').style.display = 'none';
+                    document.getElementById('teamClientSearchResults').style.display = 'none';
                     return;
                 }
                 
@@ -5886,7 +5886,7 @@ const TeamManager = {
             // Close results when clicking outside
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.client-search-container')) {
-                    document.getElementById('clientSearchResults').style.display = 'none';
+                    document.getElementById('teamClientSearchResults').style.display = 'none';
                 }
             });
         }
@@ -5918,8 +5918,8 @@ const TeamManager = {
     hideAssignmentSection: function() {
         document.getElementById('assignmentSection').style.display = 'none';
         this.selectedClientId = null;
-        document.getElementById('clientSearchInput').value = '';
-        document.getElementById('clientSearchResults').style.display = 'none';
+        document.getElementById('teamClientSearchInput').value = '';
+        document.getElementById('teamClientSearchResults').style.display = 'none';
     },
     
     displaySalesmen: function(salesmen) {
@@ -6051,7 +6051,7 @@ const TeamManager = {
     },
     
     displaySearchResults: function(clients) {
-        const resultsDiv = document.getElementById('clientSearchResults');
+        const resultsDiv = document.getElementById('teamClientSearchResults');
         
         if (clients.length === 0) {
             resultsDiv.innerHTML = `<div class="search-result-item no-results">${currentLanguage === 'ar' ? 'لا توجد نتائج' : 'No results'}</div>`;
@@ -6071,8 +6071,8 @@ const TeamManager = {
     
     selectClient: function(clientId, clientName) {
         this.selectedClientId = clientId;
-        document.getElementById('clientSearchInput').value = clientName;
-        document.getElementById('clientSearchResults').style.display = 'none';
+        document.getElementById('teamClientSearchInput').value = clientName;
+        document.getElementById('teamClientSearchResults').style.display = 'none';
     },
     
     assignClient: async function() {
@@ -6098,7 +6098,7 @@ const TeamManager = {
                 alert(currentLanguage === 'ar' ? 'تم تعيين العميل بنجاح' : 'Client assigned successfully');
                 this.loadSalesmen();
                 this.selectedClientId = null;
-                document.getElementById('clientSearchInput').value = '';
+                document.getElementById('teamClientSearchInput').value = '';
             } else {
                 const error = await response.json();
                 alert(error.message || (currentLanguage === 'ar' ? 'فشل في تعيين العميل' : 'Failed to assign client'));
