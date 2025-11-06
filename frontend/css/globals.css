@@ -4077,7 +4077,7 @@ html[lang="en"] .section-actions {
 
 .assignment-controls {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr) auto;
     gap: 20px;
     align-items: end;
 }
