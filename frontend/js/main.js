@@ -6352,14 +6352,15 @@ const TeamManager = {
         container.innerHTML = `<div class="loading-text">${currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>`;
         
         try {
-            // Load full client list to get salesman names
-            const response = await fetch(`${API_BASE_URL}/clients/list`, {
+            // Load ALL clients (active and inactive) to get complete list
+            const response = await fetch(`${API_BASE_URL}/clients/list?show_all=true`, {
                 headers: getAuthHeaders()
             });
             
             if (response.ok) {
                 const data = await response.json();
                 this.allClients = data.clients || data;
+                console.log(`Loaded ${this.allClients.length} clients for batch assignment`);
                 this.extractBatchFilters(this.allClients);
                 this.displayBatchClientsList(this.allClients);
             }
