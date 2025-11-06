@@ -1214,28 +1214,20 @@ const ClientManager = {
     
     
     loadFilterData: async function() {
-        /**Load all unique regions and salesmen for filter dropdowns - using same endpoint as team management*/
+        /**Load all unique regions and salesmen for filter dropdowns*/
         console.log('Loading filter data...');
         try {
-            // Use the ultra-fast names-with-salesman endpoint (same as team management)
-            const response = await fetch(`${API_BASE_URL}/clients/names-with-salesman`, {
+            const response = await fetch(`${API_BASE_URL}/clients/filter-data`, {
                 headers: getAuthHeaders()
             });
             
             console.log('Filter data response status:', response.status);
             
             if (response.ok) {
-                const clients = await response.json();
-                console.log(`Loaded ${clients.length} clients for filters`);
-                
-                // Extract unique regions and salesmen from the client list
-                const regions = [...new Set(clients.map(c => c.region).filter(r => r))].sort();
-                const salesmen = [...new Set(clients.map(c => c.salesman_name).filter(s => s))].sort();
-                
-                console.log('Extracted filters:', { regions: regions.length, salesmen: salesmen.length });
-                
-                this.populateRegionFilter(regions);
-                this.populateSalesmanFilter(salesmen);
+                const data = await response.json();
+                console.log('Filter data received:', data);
+                this.populateRegionFilter(data.regions);
+                this.populateSalesmanFilter(data.salesmen);
             } else {
                 const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
                 console.error('Failed to load filter data:', response.status, errorData);
