@@ -4259,6 +4259,118 @@ html[lang="en"] .section-actions {
     flex: 1;
 }
 
+/* Batch Assignment Styles */
+.assignment-mode-toggle {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.batch-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.batch-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.batch-clients-list {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    background: #f7fafc;
+}
+
+.batch-client-item {
+    background: white;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.batch-client-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.client-checkbox {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.checkbox-custom {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #667eea;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.client-checkbox:checked + .checkbox-custom {
+    background: #667eea;
+}
+
+.client-checkbox:checked + .checkbox-custom::after {
+    content: '✓';
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.client-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.client-name-batch {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 15px;
+}
+
+.client-region-batch {
+    font-size: 13px;
+    color: #718096;
+}
+
+.btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.loading-text, .error-text {
+    text-align: center;
+    padding: 20px;
+    color: #718096;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .team-filter-bar {

@@ -242,12 +242,22 @@
                 <div class="assignment-section" id="assignmentSection" style="display: none;">
                     <div class="assignment-header">
                         <h3 data-ar="تعيين العملاء" data-en="Assign Clients">تعيين العملاء</h3>
-                        <button class="btn-close-assignment" onclick="TeamManager.hideAssignmentSection()">
-                            <span data-ar="إغلاق" data-en="Close">إغلاق</span>
-                        </button>
+                        <div class="assignment-mode-toggle">
+                            <button class="btn btn-secondary btn-sm" id="batchModeBtn" onclick="TeamManager.toggleBatchMode()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 11l3 3L22 4"/>
+                                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                                </svg>
+                                <span data-ar="تعيين متعدد" data-en="Batch Mode">تعيين متعدد</span>
+                            </button>
+                            <button class="btn-close-assignment" onclick="TeamManager.hideAssignmentSection()">
+                                <span data-ar="إغلاق" data-en="Close">إغلاق</span>
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="assignment-controls">
+                    <!-- Single Assignment Mode -->
+                    <div id="singleAssignmentMode" class="assignment-controls">
                         <div class="control-group">
                             <label data-ar="المندوب" data-en="Salesman">المندوب</label>
                             <select id="salesmanSelect" class="filter-select">
@@ -269,6 +279,33 @@
                             </svg>
                             <span data-ar="تعيين" data-en="Assign">تعيين</span>
                         </button>
+                    </div>
+                    
+                    <!-- Batch Assignment Mode -->
+                    <div id="batchAssignmentMode" style="display: none;">
+                        <div class="batch-controls">
+                            <div class="control-group">
+                                <label data-ar="المندوب" data-en="Salesman">المندوب</label>
+                                <select id="batchSalesmanSelect" class="filter-select">
+                                    <option value="" data-ar="اختر مندوب" data-en="Select Salesman">اختر مندوب</option>
+                                </select>
+                            </div>
+                            <div class="batch-actions">
+                                <input type="text" id="batchClientSearch" class="search-input" placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
+                                <button class="btn btn-secondary" onclick="TeamManager.selectAllClients()">
+                                    <span data-ar="تحديد الكل" data-en="Select All">تحديد الكل</span>
+                                </button>
+                                <button class="btn btn-secondary" onclick="TeamManager.deselectAllClients()">
+                                    <span data-ar="إلغاء الكل" data-en="Deselect All">إلغاء الكل</span>
+                                </button>
+                                <button class="btn btn-primary" onclick="TeamManager.batchAssignClients()">
+                                    <span id="batchAssignBtnText" data-ar="تعيين المحددين" data-en="Assign Selected">تعيين المحددين (0)</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="batchClientsList" class="batch-clients-list">
+                            <!-- Clients with checkboxes will appear here -->
+                        </div>
                     </div>
                     
                     <div id="salesmanClientsDisplay" class="clients-display">

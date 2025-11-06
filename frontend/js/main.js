@@ -5804,6 +5804,8 @@ const TeamManager = {
     allAssignedClients: [],
     selectedClientId: null,
     allRegions: [],
+    batchMode: false,
+    selectedClientIds: new Set(),
     
     loadSalesmen: async function() {
         try {
@@ -6297,6 +6299,227 @@ const TeamManager = {
         document.getElementById('teamRegionFilter').value = '';
         document.getElementById('teamClientSearch').value = '';
         this.loadFilteredClients();
+    },
+    
+    // Toggle between single and batch assignment mode
+    toggleBatchMode: function() {
+        this.batchMode = !this.batchMode;
+        const singleMode = document.getElementById('singleAssignmentMode');
+        const batchMode = document.getElementById('batchAssignmentMode');
+        const batchModeBtn = document.getElementById('batchModeBtn');
+        
+        if (this.batchMode) {
+            singleMode.style.display = 'none';
+            batchMode.style.display = 'block';
+            batchModeBtn.classList.add('active');
+            this.populateBatchSalesmanSelect();
+            this.loadBatchClientsList();
+        } else {
+            singleMode.style.display = 'grid';
+            batchMode.style.display = 'none';
+            batchModeBtn.classList.remove('active');
+            this.selectedClientIds.clear();
+        }
+    },
+    
+    // Populate salesman select for batch mode
+    populateBatchSalesmanSelect: function() {
+        const select = document.getElementById('batchSalesmanSelect');
+        if (!select) return;
+        
+        select.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'اختر مندوب' : 'Select Salesman'}</option>`;
+        this.currentSalesmen.forEach(salesman => {
+            const option = document.createElement('option');
+            option.value = salesman.id;
+            option.textContent = salesman.username;
+            select.appendChild(option);
+        });
+    },
+    
+    // Load clients list with checkboxes
+    loadBatchClientsList: async function() {
+        const container = document.getElementById('batchClientsList');
+        const searchInput = document.getElementById('batchClientSearch');
+        
+        // Setup search
+        searchInput.addEventListener('input', (e) => {
+            this.filterBatchClients(e.target.value.toLowerCase().trim());
+        });
+        
+        container.innerHTML = `<div class="loading-text">${currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>`;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/clients/names`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                this.allClients = await response.json();
+                this.displayBatchClientsList(this.allClients);
+            }
+        } catch (error) {
+            console.error('Error loading clients for batch:', error);
+            container.innerHTML = `<div class="error-text">${currentLanguage === 'ar' ? 'خطأ في التحميل' : 'Loading error'}</div>`;
+        }
+    },
+    
+    // Display clients with checkboxes
+    displayBatchClientsList: function(clients) {
+        const container = document.getElementById('batchClientsList');
+        
+        if (clients.length === 0) {
+            container.innerHTML = `<div class="empty-state"><p>${currentLanguage === 'ar' ? 'لا توجد عملاء' : 'No clients'}</p></div>`;
+            return;
+        }
+        
+        container.innerHTML = clients.map(client => `
+            <div class="batch-client-item">
+                <label class="checkbox-label">
+                    <input 
+                        type="checkbox" 
+                        class="client-checkbox" 
+                        data-client-id="${client.id}"
+                        onchange="TeamManager.toggleClientSelection(${client.id})"
+                        ${this.selectedClientIds.has(client.id) ? 'checked' : ''}
+                    >
+                    <span class="checkbox-custom"></span>
+                    <div class="client-details">
+                        <span class="client-name-batch">${client.name}</span>
+                        <span class="client-region-batch">${client.region || ''}</span>
+                    </div>
+                </label>
+            </div>
+        `).join('');
+    },
+    
+    // Filter batch clients by search term
+    filterBatchClients: function(searchTerm) {
+        if (!searchTerm) {
+            this.displayBatchClientsList(this.allClients);
+            return;
+        }
+        
+        const filtered = this.allClients.filter(client =>
+            client.name.toLowerCase().includes(searchTerm) ||
+            (client.region && client.region.toLowerCase().includes(searchTerm))
+        );
+        
+        this.displayBatchClientsList(filtered);
+    },
+    
+    // Toggle individual client selection
+    toggleClientSelection: function(clientId) {
+        if (this.selectedClientIds.has(clientId)) {
+            this.selectedClientIds.delete(clientId);
+        } else {
+            this.selectedClientIds.add(clientId);
+        }
+        this.updateBatchAssignButton();
+    },
+    
+    // Select all visible clients
+    selectAllClients: function() {
+        const checkboxes = document.querySelectorAll('.client-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            const clientId = parseInt(checkbox.dataset.clientId);
+            this.selectedClientIds.add(clientId);
+        });
+        this.updateBatchAssignButton();
+    },
+    
+    // Deselect all clients
+    deselectAllClients: function() {
+        const checkboxes = document.querySelectorAll('.client-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        this.selectedClientIds.clear();
+        this.updateBatchAssignButton();
+    },
+    
+    // Update batch assign button text with count
+    updateBatchAssignButton: function() {
+        const btnText = document.getElementById('batchAssignBtnText');
+        const count = this.selectedClientIds.size;
+        
+        if (currentLanguage === 'ar') {
+            btnText.textContent = `تعيين المحددين (${count})`;
+        } else {
+            btnText.textContent = `Assign Selected (${count})`;
+        }
+    },
+    
+    // Batch assign selected clients to salesman
+    batchAssignClients: async function() {
+        const salesmanId = document.getElementById('batchSalesmanSelect').value;
+        
+        if (!salesmanId) {
+            alert(currentLanguage === 'ar' ? 'الرجاء اختيار مندوب' : 'Please select a salesman');
+            return;
+        }
+        
+        if (this.selectedClientIds.size === 0) {
+            alert(currentLanguage === 'ar' ? 'الرجاء اختيار عملاء' : 'Please select clients');
+            return;
+        }
+        
+        const clientIds = Array.from(this.selectedClientIds);
+        const confirmMsg = currentLanguage === 'ar' ? 
+            `هل تريد تعيين ${clientIds.length} عميل؟` : 
+            `Assign ${clientIds.length} clients?`;
+        
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+        
+        try {
+            let successCount = 0;
+            let failCount = 0;
+            
+            // Show progress
+            const btnText = document.getElementById('batchAssignBtnText');
+            const originalText = btnText.textContent;
+            
+            for (let i = 0; i < clientIds.length; i++) {
+                btnText.textContent = currentLanguage === 'ar' ? 
+                    `جاري التعيين... (${i + 1}/${clientIds.length})` : 
+                    `Assigning... (${i + 1}/${clientIds.length})`;
+                
+                const response = await fetch(`${API_BASE_URL}/supervisors/assign-client`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        salesman_id: parseInt(salesmanId),
+                        client_id: clientIds[i]
+                    })
+                });
+                
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            }
+            
+            btnText.textContent = originalText;
+            
+            // Show results
+            const resultMsg = currentLanguage === 'ar' ? 
+                `تم تعيين ${successCount} عميل بنجاح${failCount > 0 ? `, فشل ${failCount}` : ''}` :
+                `${successCount} clients assigned successfully${failCount > 0 ? `, ${failCount} failed` : ''}`;
+            
+            alert(resultMsg);
+            
+            // Reset and reload
+            this.selectedClientIds.clear();
+            this.deselectAllClients();
+            this.loadSalesmen();
+            
+        } catch (error) {
+            console.error('Error in batch assignment:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في التعيين' : 'Assignment error');
+        }
     }
 };
 
