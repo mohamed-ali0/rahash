@@ -4396,21 +4396,32 @@ const ReportManager = {
     
     loadClientsForDropdown: async function() {
         try {
+            console.log('Loading clients for dropdown...');
             // Use ultra-lightweight names-only endpoint for maximum speed
             const response = await fetch(`${API_BASE_URL}/clients/names`, {
                 headers: getAuthHeaders()
             });
+            console.log('Clients API response status:', response.status);
             if (response.ok) {
                 const clients = await response.json();
+                console.log(`Loaded ${clients.length} clients for dropdown`);
                 this.clientsData = clients; // Store for search functionality
                 
                 const dropdown = document.getElementById('clientDropdown');
+                if (!dropdown) {
+                    console.error('clientDropdown element not found!');
+                    return;
+                }
+                
                 dropdown.innerHTML = `<div class="dropdown-item" data-value="">${currentLanguage === 'ar' ? 'اختر العميل' : 'Select Client'}</div>`;
                 clients.forEach(client => {
                     dropdown.innerHTML += `<div class="dropdown-item" data-value="${client.id}">${client.name}</div>`;
                 });
+                console.log('Client dropdown populated with', dropdown.children.length, 'items');
                 
                 this.initializeClientSearch();
+            } else {
+                console.error('Failed to load clients, status:', response.status);
             }
         } catch (error) {
             console.error('Error loading clients for dropdown:', error);
@@ -4447,7 +4458,17 @@ const ReportManager = {
         const dropdown = document.getElementById('clientDropdown');
         const hiddenInput = document.getElementById('selectedClientId');
         
-        if (!searchInput || !dropdown || !hiddenInput) return;
+        if (!searchInput || !dropdown || !hiddenInput) {
+            console.error('Client search elements not found:', { searchInput: !!searchInput, dropdown: !!dropdown, hiddenInput: !!hiddenInput });
+            return;
+        }
+        
+        // Prevent duplicate initialization
+        if (searchInput.dataset.initialized === 'true') {
+            console.log('Client search already initialized');
+            return;
+        }
+        searchInput.dataset.initialized = 'true';
         
         // Handle input focus - show dropdown
         searchInput.addEventListener('focus', () => {
