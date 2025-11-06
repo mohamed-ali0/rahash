@@ -6336,7 +6336,7 @@ const TeamManager = {
         });
     },
     
-    // Load clients list with checkboxes
+    // Load clients list with checkboxes - OPTIMIZED (names only, super fast!)
     loadBatchClientsList: async function() {
         const container = document.getElementById('batchClientsList');
         const searchInput = document.getElementById('batchClientSearch');
@@ -6352,15 +6352,14 @@ const TeamManager = {
         container.innerHTML = `<div class="loading-text">${currentLanguage === 'ar' ? 'جاري التحميل...' : 'Loading...'}</div>`;
         
         try {
-            // Load ALL clients (active and inactive) to get complete list
-            const response = await fetch(`${API_BASE_URL}/clients/list?show_all=true`, {
+            // Use optimized endpoint - only loads ID, name, region, salesman_name (no images, no person data)
+            const response = await fetch(`${API_BASE_URL}/clients/names-with-salesman`, {
                 headers: getAuthHeaders()
             });
             
             if (response.ok) {
-                const data = await response.json();
-                this.allClients = data.clients || data;
-                console.log(`Loaded ${this.allClients.length} clients for batch assignment`);
+                this.allClients = await response.json();
+                console.log(`⚡ Fast loaded ${this.allClients.length} clients for batch assignment`);
                 this.extractBatchFilters(this.allClients);
                 this.displayBatchClientsList(this.allClients);
             }
