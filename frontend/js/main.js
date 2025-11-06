@@ -5801,7 +5801,9 @@ const ReportManager = {
 const TeamManager = {
     currentSalesmen: [],
     allClients: [],
+    allAssignedClients: [],
     selectedClientId: null,
+    allRegions: [],
     
     loadSalesmen: async function() {
         try {
@@ -5815,6 +5817,7 @@ const TeamManager = {
                 this.displaySalesmen(salesmen);
                 this.populateSalesmanSelect(salesmen);
                 this.updateSalesmenCount(salesmen.length);
+                this.populateTeamSalesmanFilter(salesmen);
             } else {
                 console.error('Failed to load salesmen');
             }
@@ -6097,6 +6100,10 @@ const TeamManager = {
                 // Close modal and reload
                 document.querySelector('.modal-overlay')?.remove();
                 this.loadSalesmen();
+                // Reload filtered clients if visible
+                if (document.getElementById('teamClientFilters').style.display === 'block') {
+                    this.loadFilteredClients();
+                }
             } else {
                 const error = await response.json();
                 alert(error.message || (currentLanguage === 'ar' ? 'فشل في إلغاء التعيين' : 'Failed to unassign client'));
@@ -6105,6 +6112,191 @@ const TeamManager = {
             console.error('Error unassigning client:', error);
             alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
         }
+    },
+    
+    // Toggle client filters section
+    toggleClientFilters: function() {
+        const filtersDiv = document.getElementById('teamClientFilters');
+        if (filtersDiv.style.display === 'none' || !filtersDiv.style.display) {
+            filtersDiv.style.display = 'block';
+            this.loadFilteredClients();
+        } else {
+            filtersDiv.style.display = 'none';
+        }
+    },
+    
+    // Populate salesman filter for team client filtering
+    populateTeamSalesmanFilter: function(salesmen) {
+        const select = document.getElementById('teamSalesmanFilter');
+        if (!select) return;
+        
+        select.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'جميع المندوبين' : 'All Salesmen'}</option>`;
+        salesmen.forEach(salesman => {
+            const option = document.createElement('option');
+            option.value = salesman.id;
+            option.textContent = salesman.username;
+            select.appendChild(option);
+        });
+    },
+    
+    // Load all assigned clients for filtering
+    loadFilteredClients: async function() {
+        const salesmanId = document.getElementById('teamSalesmanFilter').value;
+        const regionFilter = document.getElementById('teamRegionFilter').value;
+        const searchTerm = document.getElementById('teamClientSearch').value.toLowerCase().trim();
+        
+        try {
+            // If salesman is selected, load that salesman's clients
+            if (salesmanId) {
+                const response = await fetch(`${API_BASE_URL}/supervisors/salesmen/${salesmanId}/clients`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    let clients = await response.json();
+                    this.allAssignedClients = clients;
+                    this.extractRegions(clients);
+                    this.applyClientFilters(clients, regionFilter, searchTerm);
+                }
+            } else {
+                // Load all clients for all salesmen
+                const response = await fetch(`${API_BASE_URL}/clients/list`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    let clients = data.clients || data;
+                    // Filter only assigned clients
+                    clients = clients.filter(c => c.assigned_user_id);
+                    this.allAssignedClients = clients;
+                    this.extractRegions(clients);
+                    this.applyClientFilters(clients, regionFilter, searchTerm);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading filtered clients:', error);
+        }
+    },
+    
+    // Extract unique regions from clients
+    extractRegions: function(clients) {
+        const regions = [...new Set(clients.map(c => c.region).filter(r => r))];
+        this.allRegions = regions;
+        this.populateTeamRegionFilter(regions);
+    },
+    
+    // Populate region filter
+    populateTeamRegionFilter: function(regions) {
+        const select = document.getElementById('teamRegionFilter');
+        if (!select) return;
+        
+        const currentValue = select.value;
+        select.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'جميع المناطق' : 'All Regions'}</option>`;
+        regions.forEach(region => {
+            const option = document.createElement('option');
+            option.value = region;
+            option.textContent = region;
+            select.appendChild(option);
+        });
+        select.value = currentValue;
+    },
+    
+    // Apply filters to clients
+    applyClientFilters: function(clients, regionFilter, searchTerm) {
+        let filtered = clients;
+        
+        if (regionFilter) {
+            filtered = filtered.filter(c => c.region === regionFilter);
+        }
+        
+        if (searchTerm) {
+            filtered = filtered.filter(c => 
+                c.name.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        this.displayFilteredClients(filtered);
+    },
+    
+    // Display filtered clients
+    displayFilteredClients: function(clients) {
+        const container = document.getElementById('teamFilteredClients');
+        
+        if (clients.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>${currentLanguage === 'ar' ? 'لا توجد عملاء' : 'No clients found'}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = clients.map(client => {
+            const salesman = this.currentSalesmen.find(s => s.id === client.assigned_user_id);
+            const salesmanName = salesman ? salesman.username : (currentLanguage === 'ar' ? 'غير معين' : 'Unassigned');
+            
+            return `
+                <div class="filtered-client-card">
+                    <div class="client-card-header">
+                        <h4>${client.name}</h4>
+                        <span class="client-badge">${client.region || ''}</span>
+                    </div>
+                    <div class="client-card-body">
+                        <div class="client-info-item">
+                            <span class="info-label">${currentLanguage === 'ar' ? 'المندوب:' : 'Salesman:'}</span>
+                            <span class="info-value">${salesmanName}</span>
+                        </div>
+                        <div class="client-info-item">
+                            <span class="info-label">${currentLanguage === 'ar' ? 'الهاتف:' : 'Phone:'}</span>
+                            <span class="info-value">${client.phone || '-'}</span>
+                        </div>
+                    </div>
+                    <div class="client-card-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="ClientManager.viewClientDetails(${client.id})">
+                            ${currentLanguage === 'ar' ? 'عرض' : 'View'}
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="TeamManager.quickUnassignClient(${client.id})">
+                            ${currentLanguage === 'ar' ? 'إلغاء التعيين' : 'Unassign'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+    
+    // Quick unassign without opening modal
+    quickUnassignClient: async function(clientId) {
+        if (!confirm(currentLanguage === 'ar' ? 'هل تريد إلغاء تعيين هذا العميل؟' : 'Unassign this client?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/supervisors/unassign-client/${clientId}`, {
+                method: 'PUT',
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم إلغاء التعيين بنجاح' : 'Client unassigned successfully');
+                this.loadSalesmen();
+                this.loadFilteredClients();
+            } else {
+                const error = await response.json();
+                alert(error.message || (currentLanguage === 'ar' ? 'فشل في إلغاء التعيين' : 'Failed to unassign client'));
+            }
+        } catch (error) {
+            console.error('Error unassigning client:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
+        }
+    },
+    
+    // Clear all filters
+    clearFilters: function() {
+        document.getElementById('teamSalesmanFilter').value = '';
+        document.getElementById('teamRegionFilter').value = '';
+        document.getElementById('teamClientSearch').value = '';
+        this.loadFilteredClients();
     }
 };
 

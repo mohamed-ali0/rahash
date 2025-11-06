@@ -184,12 +184,46 @@
             <!-- Search and Filter Bar -->
             <div class="team-filter-bar">
                 <input type="text" id="salesmanSearch" class="search-input" placeholder="ابحث عن مندوب..." data-ar="ابحث عن مندوب..." data-en="Search salesman...">
+                <button class="btn btn-secondary" onclick="TeamManager.toggleClientFilters()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <span data-ar="عرض العملاء" data-en="View Clients">عرض العملاء</span>
+                </button>
                 <button class="btn btn-primary" onclick="TeamManager.showAssignmentSection()" data-ar="تعيين عملاء" data-en="Assign Clients">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 5v14M5 12h14"/>
                     </svg>
                     <span data-ar="تعيين عملاء" data-en="Assign Clients">تعيين عملاء</span>
                 </button>
+            </div>
+            
+            <!-- Client Filters (for viewing assigned clients) -->
+            <div class="team-client-filters" id="teamClientFilters" style="display: none;">
+                <h3 data-ar="عرض العملاء المعينين" data-en="View Assigned Clients">عرض العملاء المعينين</h3>
+                <div class="filter-row">
+                    <select id="teamSalesmanFilter" class="filter-select">
+                        <option value="" data-ar="جميع المندوبين" data-en="All Salesmen">جميع المندوبين</option>
+                    </select>
+                    <select id="teamRegionFilter" class="filter-select">
+                        <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
+                    </select>
+                    <input type="text" id="teamClientSearch" class="search-input" placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
+                    <button class="btn btn-secondary" onclick="TeamManager.loadFilteredClients()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                        <span data-ar="بحث" data-en="Search">بحث</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="TeamManager.clearFilters()">
+                        <span data-ar="مسح الفلاتر" data-en="Clear Filters">مسح الفلاتر</span>
+                    </button>
+                </div>
+                <div id="teamFilteredClients" class="filtered-clients-grid">
+                    <!-- Filtered clients will be displayed here -->
+                </div>
             </div>
             
             <div class="team-container">
