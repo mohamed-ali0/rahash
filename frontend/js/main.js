@@ -4722,11 +4722,10 @@ const ReportManager = {
         const priceDisplay = document.createElement('div');
         priceDisplay.className = 'internal-price-display';
         
-        // Update the display with both internal price and client price
-        const priceText = currentLanguage === 'ar' ? 
-            `سعر رهش: ${product.internal_price.toFixed(2)} ريال | سعر العميل: ${product.client_price.toFixed(2)} ريال` : 
-            `Rahash Price: ${product.internal_price.toFixed(2)} SAR | Client Price: ${product.client_price.toFixed(2)} SAR`;
-        priceDisplay.textContent = priceText;
+        // Update the display with both internal price and client price on separate lines
+        priceDisplay.innerHTML = currentLanguage === 'ar' ? 
+            `<div>سعر رهش: ${product.internal_price.toFixed(2)} ريال</div><div>سعر العميل: ${product.client_price.toFixed(2)} ريال</div>` : 
+            `<div>Rahash Price: ${product.internal_price.toFixed(2)} SAR</div><div>Client Price: ${product.client_price.toFixed(2)} SAR</div>`;
         
         // Insert after the product select container
         container.parentNode.insertBefore(priceDisplay, container.nextSibling);
