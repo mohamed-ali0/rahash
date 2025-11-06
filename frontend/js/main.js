@@ -4044,7 +4044,7 @@ const ReportManager = {
                     </div>
 
                     <!-- Predefined Notes Section -->
-                    <div class="form-section">
+                    <div class="form-section" id="predefinedNotesSection">
                         <h4>${currentLanguage === 'ar' ? 'الملاحظات المحددة مسبقاً' : 'Predefined Notes'}</h4>
                         <div class="form-group">
                             <label>${currentLanguage === 'ar' ? 'اختر سؤال محدد مسبقاً' : 'Select Predefined Question'}</label>
@@ -4102,6 +4102,22 @@ const ReportManager = {
             cancelButton.addEventListener('click', () => {
                 closeModalAndRestoreScroll(modal, 'addReportForm-cancel-btn');
             });
+        }
+        
+        // Hide predefined notes section for salesmen
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+            try {
+                const user = JSON.parse(userInfo);
+                if (user.role === 'salesman') {
+                    const predefinedNotesSection = document.getElementById('predefinedNotesSection');
+                    if (predefinedNotesSection) {
+                        predefinedNotesSection.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking user role:', error);
+            }
         }
         
         // Load clients and products for the dropdowns

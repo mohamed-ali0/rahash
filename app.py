@@ -2609,8 +2609,14 @@ def get_visit_report_html(report_id):
         if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
             return "Permission denied", 403
         
-        # Read the HTML template and inject data directly
-        with open('templates/visit_report.html', 'r', encoding='utf-8') as f:
+        # Read the HTML template based on user role
+        # Salesmen use a different template
+        if current_user.role == UserRole.SALESMAN:
+            template_file = 'templates/visit_report_salesman.html'
+        else:
+            template_file = 'templates/visit_report.html'
+        
+        with open(template_file, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
         # Load price tolerance from settings
@@ -2627,6 +2633,7 @@ def get_visit_report_html(report_id):
             'client_address': report.client.address if (report.client and report.client.address) else '-',
             'client_phone': report.client.owner.phone if (report.client and report.client.owner and report.client.owner.phone) else '-',
             'visit_date': report.visit_date.strftime('%Y/%m/%d'),
+            'salesman_name': report.user.username if report.user else 'غير محدد',
             'notes': '\\n'.join([note.note_text for note in report.notes]) if report.notes else '',
             'images': [],
             'products': [],
