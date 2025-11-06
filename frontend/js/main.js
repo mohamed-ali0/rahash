@@ -367,8 +367,12 @@ function showSection(sectionId) {
             case 'team':
                 // Load team management for supervisors
                 TeamManager.loadSalesmen();
-                TeamManager.loadAllClients();
-                document.getElementById('assignmentSection').style.display = 'block';
+                TeamManager.loadClientNamesOnly();
+                TeamManager.setupSearchFilter();
+                break;
+            case 'users':
+                // Load user management for admin
+                UserManager.loadUsers();
                 break;
             case 'settings':
                 // Only show settings for super admin
@@ -583,6 +587,19 @@ function setupUserInterface() {
                 } else {
                     teamMenuItem.style.display = 'none';
                     console.log('Team management menu hidden for non-supervisor');
+                }
+            }
+
+            // Show User Management for admins only
+            const userMenuItem = document.getElementById('userManagementMenuItem');
+            if (userMenuItem) {
+                const isAdmin = isSuperAdmin(user);
+                if (isAdmin) {
+                    userMenuItem.style.display = 'list-item';
+                    console.log('User management menu shown for admin');
+                } else {
+                    userMenuItem.style.display = 'none';
+                    console.log('User management menu hidden for non-admin');
                 }
             }
             
@@ -5784,6 +5801,7 @@ const ReportManager = {
 const TeamManager = {
     currentSalesmen: [],
     allClients: [],
+    selectedClientId: null,
     
     loadSalesmen: async function() {
         try {
@@ -5796,12 +5814,84 @@ const TeamManager = {
                 this.currentSalesmen = salesmen;
                 this.displaySalesmen(salesmen);
                 this.populateSalesmanSelect(salesmen);
+                this.updateSalesmenCount(salesmen.length);
             } else {
                 console.error('Failed to load salesmen');
             }
         } catch (error) {
             console.error('Error loading salesmen:', error);
         }
+    },
+    
+    updateSalesmenCount: function(count) {
+        const countBadge = document.getElementById('salesmenCount');
+        if (countBadge) {
+            countBadge.textContent = count;
+        }
+    },
+    
+    setupSearchFilter: function() {
+        const searchInput = document.getElementById('salesmanSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                this.filterSalesmen(searchTerm);
+            });
+        }
+        
+        // Setup client search with autocomplete
+        const clientSearchInput = document.getElementById('clientSearchInput');
+        if (clientSearchInput) {
+            let searchTimeout;
+            clientSearchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                if (searchTerm.length < 2) {
+                    document.getElementById('clientSearchResults').style.display = 'none';
+                    return;
+                }
+                
+                searchTimeout = setTimeout(() => {
+                    this.searchClients(searchTerm);
+                }, 300);
+            });
+            
+            // Close results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.client-search-container')) {
+                    document.getElementById('clientSearchResults').style.display = 'none';
+                }
+            });
+        }
+    },
+    
+    filterSalesmen: function(searchTerm) {
+        if (!searchTerm) {
+            this.displaySalesmen(this.currentSalesmen);
+            this.updateSalesmenCount(this.currentSalesmen.length);
+            return;
+        }
+        
+        const filtered = this.currentSalesmen.filter(salesman => 
+            salesman.username.toLowerCase().includes(searchTerm) ||
+            salesman.email.toLowerCase().includes(searchTerm)
+        );
+        
+        this.displaySalesmen(filtered);
+        this.updateSalesmenCount(filtered.length);
+    },
+    
+    showAssignmentSection: function() {
+        document.getElementById('assignmentSection').style.display = 'block';
+        document.getElementById('assignmentSection').scrollIntoView({ behavior: 'smooth' });
+    },
+    
+    hideAssignmentSection: function() {
+        document.getElementById('assignmentSection').style.display = 'none';
+        this.selectedClientId = null;
+        document.getElementById('clientSearchInput').value = '';
+        document.getElementById('clientSearchResults').style.display = 'none';
     },
     
     displaySalesmen: function(salesmen) {
@@ -5909,38 +5999,57 @@ const TeamManager = {
         });
     },
     
-    loadAllClients: async function() {
+    loadClientNamesOnly: async function() {
         try {
-            const response = await fetch(`${API_BASE_URL}/clients/list`, {
+            const response = await fetch(`${API_BASE_URL}/clients/names`, {
                 headers: getAuthHeaders()
             });
             
             if (response.ok) {
-                const data = await response.json();
-                this.allClients = data.clients || data;
-                this.populateClientSelect();
+                this.allClients = await response.json();
+                console.log(`Loaded ${this.allClients.length} clients for assignment`);
             }
         } catch (error) {
-            console.error('Error loading clients:', error);
+            console.error('Error loading client names:', error);
         }
     },
     
-    populateClientSelect: function() {
-        const select = document.getElementById('clientAssignSelect');
-        if (!select) return;
+    searchClients: function(searchTerm) {
+        const filtered = this.allClients.filter(client => 
+            client.name.toLowerCase().includes(searchTerm)
+        ).slice(0, 10); // Limit to 10 results
         
-        select.innerHTML = `<option value="">${currentLanguage === 'ar' ? 'اختر عميل' : 'Select Client'}</option>`;
-        this.allClients.forEach(client => {
-            const option = document.createElement('option');
-            option.value = client.id;
-            option.textContent = client.name;
-            select.appendChild(option);
-        });
+        this.displaySearchResults(filtered);
+    },
+    
+    displaySearchResults: function(clients) {
+        const resultsDiv = document.getElementById('clientSearchResults');
+        
+        if (clients.length === 0) {
+            resultsDiv.innerHTML = `<div class="search-result-item no-results">${currentLanguage === 'ar' ? 'لا توجد نتائج' : 'No results'}</div>`;
+            resultsDiv.style.display = 'block';
+            return;
+        }
+        
+        resultsDiv.innerHTML = clients.map(client => `
+            <div class="search-result-item" onclick="TeamManager.selectClient(${client.id}, '${client.name.replace(/'/g, "\\'")}')">
+                <div class="result-name">${client.name}</div>
+                <div class="result-region">${client.region || ''}</div>
+            </div>
+        `).join('');
+        
+        resultsDiv.style.display = 'block';
+    },
+    
+    selectClient: function(clientId, clientName) {
+        this.selectedClientId = clientId;
+        document.getElementById('clientSearchInput').value = clientName;
+        document.getElementById('clientSearchResults').style.display = 'none';
     },
     
     assignClient: async function() {
         const salesmanId = document.getElementById('salesmanSelect').value;
-        const clientId = document.getElementById('clientAssignSelect').value;
+        const clientId = this.selectedClientId;
         
         if (!salesmanId || !clientId) {
             alert(currentLanguage === 'ar' ? 'الرجاء اختيار مندوب وعميل' : 'Please select a salesman and client');
@@ -5960,7 +6069,8 @@ const TeamManager = {
             if (response.ok) {
                 alert(currentLanguage === 'ar' ? 'تم تعيين العميل بنجاح' : 'Client assigned successfully');
                 this.loadSalesmen();
-                document.getElementById('clientAssignSelect').value = '';
+                this.selectedClientId = null;
+                document.getElementById('clientSearchInput').value = '';
             } else {
                 const error = await response.json();
                 alert(error.message || (currentLanguage === 'ar' ? 'فشل في تعيين العميل' : 'Failed to assign client'));
@@ -5993,6 +6103,194 @@ const TeamManager = {
             }
         } catch (error) {
             console.error('Error unassigning client:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
+        }
+    }
+};
+
+// =====================================================
+// USER MANAGEMENT (Admin only)
+// =====================================================
+
+const UserManager = {
+    allUsers: [],
+    allSupervisors: [],
+    
+    loadUsers: async function() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/all`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                const users = await response.json();
+                this.allUsers = users;
+                this.displayUsers(users);
+                this.loadSupervisors();
+                this.setupFilters();
+            } else {
+                console.error('Failed to load users');
+                alert(currentLanguage === 'ar' ? 'فشل في تحميل المستخدمين' : 'Failed to load users');
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
+        }
+    },
+    
+    loadSupervisors: async function() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/supervisors/all`, {
+                headers: getAuthHeaders()
+            });
+            
+            if (response.ok) {
+                this.allSupervisors = await response.json();
+            }
+        } catch (error) {
+            console.error('Error loading supervisors:', error);
+        }
+    },
+    
+    displayUsers: function(users) {
+        const tbody = document.getElementById('usersTableBody');
+        
+        if (users.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 20px;">
+                        ${currentLanguage === 'ar' ? 'لا يوجد مستخدمين' : 'No users found'}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = users.map(user => {
+            const roleText = this.getRoleText(user.role);
+            const isSalesman = user.role === 'salesman';
+            
+            return `
+                <tr>
+                    <td>${user.username}</td>
+                    <td>${user.email}</td>
+                    <td>${roleText}</td>
+                    <td>
+                        ${isSalesman ? 
+                            (user.supervisor_name || `<span style="color: #999;">${currentLanguage === 'ar' ? 'غير معين' : 'Unassigned'}</span>`) :
+                            '<span style="color: #999;">-</span>'
+                        }
+                    </td>
+                    <td>
+                        ${isSalesman ? 
+                            `<button class="btn btn-primary btn-sm" onclick="UserManager.showAssignSupervisorModal(${user.id}, '${user.username}', ${user.supervisor_id || 'null'})">
+                                ${currentLanguage === 'ar' ? 'تعيين مشرف' : 'Assign Supervisor'}
+                            </button>` :
+                            ''
+                        }
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+    
+    getRoleText: function(role) {
+        const roleMap = {
+            'super_admin': currentLanguage === 'ar' ? 'مسؤول النظام' : 'Super Admin',
+            'sales_supervisor': currentLanguage === 'ar' ? 'مشرف مبيعات' : 'Sales Supervisor',
+            'salesman': currentLanguage === 'ar' ? 'مندوب مبيعات' : 'Salesman'
+        };
+        return roleMap[role] || role;
+    },
+    
+    setupFilters: function() {
+        const searchInput = document.getElementById('userSearch');
+        const roleFilter = document.getElementById('roleFilter');
+        
+        const applyFilters = () => {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const roleFilter = document.getElementById('roleFilter').value;
+            
+            let filtered = this.allUsers;
+            
+            if (searchTerm) {
+                filtered = filtered.filter(user => 
+                    user.username.toLowerCase().includes(searchTerm) ||
+                    user.email.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (roleFilter) {
+                filtered = filtered.filter(user => user.role === roleFilter);
+            }
+            
+            this.displayUsers(filtered);
+        };
+        
+        searchInput.addEventListener('input', applyFilters);
+        roleFilter.addEventListener('change', applyFilters);
+    },
+    
+    showAssignSupervisorModal: function(userId, username, currentSupervisorId) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${currentLanguage === 'ar' ? 'تعيين مشرف' : 'Assign Supervisor'}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>${currentLanguage === 'ar' ? 'المستخدم:' : 'User:'} <strong>${username}</strong></p>
+                    <div class="form-group">
+                        <label>${currentLanguage === 'ar' ? 'اختر المشرف' : 'Select Supervisor'}</label>
+                        <select id="supervisorSelect" class="filter-select">
+                            <option value="">${currentLanguage === 'ar' ? 'لا يوجد مشرف' : 'No Supervisor'}</option>
+                            ${this.allSupervisors.map(supervisor => `
+                                <option value="${supervisor.id}" ${supervisor.id === currentSupervisorId ? 'selected' : ''}>
+                                    ${supervisor.username}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                        ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button class="btn btn-primary" onclick="UserManager.assignSupervisor(${userId})">
+                        ${currentLanguage === 'ar' ? 'حفظ' : 'Save'}
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+    },
+    
+    assignSupervisor: async function(userId) {
+        const supervisorId = document.getElementById('supervisorSelect').value;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/supervisor`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    supervisor_id: supervisorId ? parseInt(supervisorId) : null
+                })
+            });
+            
+            if (response.ok) {
+                alert(currentLanguage === 'ar' ? 'تم تعيين المشرف بنجاح' : 'Supervisor assigned successfully');
+                document.querySelector('.modal-overlay')?.remove();
+                this.loadUsers();
+            } else {
+                const error = await response.json();
+                alert(error.message || (currentLanguage === 'ar' ? 'فشل في تعيين المشرف' : 'Failed to assign supervisor'));
+            }
+        } catch (error) {
+            console.error('Error assigning supervisor:', error);
             alert(currentLanguage === 'ar' ? 'خطأ في الاتصال' : 'Connection error');
         }
     }

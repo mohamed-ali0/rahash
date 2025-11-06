@@ -1855,6 +1855,83 @@ def get_all_supervisors(current_user):
         print(f"Error fetching supervisors: {e}")
         return jsonify({'message': 'Failed to fetch supervisors', 'error': str(e)}), 500
 
+@app.route('/api/admin/users/all', methods=['GET'])
+@token_required
+def get_all_users_admin(current_user):
+    """Get all users with full details (Admin only)"""
+    try:
+        if current_user.role != UserRole.SUPER_ADMIN:
+            return jsonify({'message': 'Permission denied - Admin only'}), 403
+        
+        users = User.query.order_by(User.created_at.desc()).all()
+        
+        users_data = []
+        for user in users:
+            supervisor_name = None
+            if user.supervisor_id:
+                supervisor = User.query.get(user.supervisor_id)
+                if supervisor:
+                    supervisor_name = supervisor.username
+            
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role.value,
+                'supervisor_id': user.supervisor_id,
+                'supervisor_name': supervisor_name,
+                'created_at': user.created_at.isoformat()
+            })
+        
+        return jsonify(users_data), 200
+        
+    except Exception as e:
+        print(f"Error fetching all users: {e}")
+        return jsonify({'message': 'Failed to fetch users', 'error': str(e)}), 500
+
+@app.route('/api/admin/users/<int:user_id>/supervisor', methods=['PUT'])
+@token_required
+def update_user_supervisor(current_user, user_id):
+    """Update a user's supervisor assignment (Admin only)"""
+    try:
+        if current_user.role != UserRole.SUPER_ADMIN:
+            return jsonify({'message': 'Permission denied - Admin only'}), 403
+        
+        data = request.get_json()
+        supervisor_id = data.get('supervisor_id')
+        
+        # Get the user to update
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        # Validate: only salesmen can have supervisors
+        if user.role != UserRole.SALESMAN:
+            return jsonify({'message': 'Only salesmen can be assigned to supervisors'}), 400
+        
+        # Validate supervisor if provided
+        if supervisor_id:
+            supervisor = User.query.get(supervisor_id)
+            if not supervisor:
+                return jsonify({'message': 'Supervisor not found'}), 404
+            if supervisor.role != UserRole.SALES_SUPERVISOR:
+                return jsonify({'message': 'Selected user is not a supervisor'}), 400
+        
+        # Update the supervisor assignment
+        user.supervisor_id = supervisor_id
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Supervisor assignment updated successfully',
+            'user_id': user.id,
+            'supervisor_id': user.supervisor_id
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating supervisor assignment: {e}")
+        return jsonify({'message': 'Failed to update supervisor assignment', 'error': str(e)}), 500
+
 # Dashboard Stats Route
 @app.route('/api/dashboard/stats', methods=['GET'])
 @token_required

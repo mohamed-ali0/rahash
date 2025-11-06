@@ -34,6 +34,7 @@
                     <li><a href="#products" onclick="navigateAndCloseSidebar('products')" data-ar="إدارة المنتجات" data-en="Manage Products">📦 <span data-ar="إدارة المنتجات" data-en="Manage Products">إدارة المنتجات</span></a></li>
                     <li><a href="#reports" onclick="navigateAndCloseSidebar('reports')" data-ar="تقارير الزيارات" data-en="Visit Reports">📈 <span data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</span></a></li>
                     <li id="teamManagementMenuItem" style="display: none;"><a href="#team" onclick="navigateAndCloseSidebar('team')" data-ar="إدارة الفريق" data-en="Team Management">👔 <span data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</span></a></li>
+                    <li id="userManagementMenuItem" style="display: none;"><a href="#users" onclick="navigateAndCloseSidebar('users')" data-ar="إدارة المستخدمين" data-en="User Management">👤 <span data-ar="إدارة المستخدمين" data-en="User Management">إدارة المستخدمين</span></a></li>
                     <li id="systemSettingsMenuItem" style="display: none;"><a href="#settings" onclick="navigateAndCloseSidebar('settings')" data-ar="إعدادات النظام" data-en="System Settings">⚙️ <span data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</span></a></li>
                 </ul>
             </nav>
@@ -179,32 +180,98 @@
         <!-- Team Management Section (Supervisors only) -->
         <section id="team" style="display: none;">
             <h2 data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</h2>
+            
+            <!-- Search and Filter Bar -->
+            <div class="team-filter-bar">
+                <input type="text" id="salesmanSearch" class="search-input" placeholder="ابحث عن مندوب..." data-ar="ابحث عن مندوب..." data-en="Search salesman...">
+                <button class="btn btn-primary" onclick="TeamManager.showAssignmentSection()" data-ar="تعيين عملاء" data-en="Assign Clients">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    <span data-ar="تعيين عملاء" data-en="Assign Clients">تعيين عملاء</span>
+                </button>
+            </div>
+            
             <div class="team-container">
                 <!-- Salesmen List -->
                 <div class="salesmen-section">
-                    <h3 data-ar="المندوبين التابعين لي" data-en="My Salesmen">المندوبين التابعين لي</h3>
+                    <div class="section-header">
+                        <h3 data-ar="المندوبين التابعين لي" data-en="My Salesmen">المندوبين التابعين لي</h3>
+                        <span id="salesmenCount" class="count-badge">0</span>
+                    </div>
                     <div id="salesmenList" class="salesmen-grid">
                         <!-- Salesman cards will be populated here -->
                     </div>
                 </div>
                 
-                <!-- Client Assignment Section -->
+                <!-- Client Assignment Section (Hidden by default) -->
                 <div class="assignment-section" id="assignmentSection" style="display: none;">
-                    <h3 data-ar="تعيين العملاء" data-en="Assign Clients">تعيين العملاء</h3>
+                    <div class="assignment-header">
+                        <h3 data-ar="تعيين العملاء" data-en="Assign Clients">تعيين العملاء</h3>
+                        <button class="btn-close-assignment" onclick="TeamManager.hideAssignmentSection()">
+                            <span data-ar="إغلاق" data-en="Close">إغلاق</span>
+                        </button>
+                    </div>
+                    
                     <div class="assignment-controls">
-                        <select id="salesmanSelect" class="filter-select">
-                            <option value="" data-ar="اختر مندوب" data-en="Select Salesman">اختر مندوب</option>
-                        </select>
-                        <select id="clientAssignSelect" class="filter-select">
-                            <option value="" data-ar="اختر عميل" data-en="Select Client">اختر عميل</option>
-                        </select>
-                        <button class="btn btn-primary" onclick="TeamManager.assignClient()" data-ar="تعيين العميل" data-en="Assign Client">
+                        <div class="control-group">
+                            <label data-ar="المندوب" data-en="Salesman">المندوب</label>
+                            <select id="salesmanSelect" class="filter-select">
+                                <option value="" data-ar="اختر مندوب" data-en="Select Salesman">اختر مندوب</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label data-ar="العميل" data-en="Client">العميل</label>
+                            <div class="client-search-container">
+                                <input type="text" id="clientSearchInput" class="search-input" placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
+                                <div id="clientSearchResults" class="search-results" style="display: none;"></div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary btn-assign" onclick="TeamManager.assignClient()" data-ar="تعيين" data-en="Assign">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 6L9 17l-5-5"/>
+                            </svg>
                             <span data-ar="تعيين" data-en="Assign">تعيين</span>
                         </button>
                     </div>
+                    
                     <div id="salesmanClientsDisplay" class="clients-display">
                         <!-- Assigned clients will appear here -->
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Management Section (Admin only) -->
+        <section id="users" style="display: none;">
+            <h2 data-ar="إدارة المستخدمين" data-en="User Management">إدارة المستخدمين</h2>
+            <div class="users-container">
+                <div class="filter-bar">
+                    <input type="text" id="userSearch" placeholder="ابحث عن مستخدم..." data-ar="ابحث عن مستخدم..." data-en="Search users...">
+                    <select id="roleFilter" class="filter-select">
+                        <option value="" data-ar="جميع الأدوار" data-en="All Roles">جميع الأدوار</option>
+                        <option value="super_admin" data-ar="مسؤول النظام" data-en="Super Admin">مسؤول النظام</option>
+                        <option value="sales_supervisor" data-ar="مشرف مبيعات" data-en="Sales Supervisor">مشرف مبيعات</option>
+                        <option value="salesman" data-ar="مندوب مبيعات" data-en="Salesman">مندوب مبيعات</option>
+                    </select>
+                </div>
+                <div class="users-table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</th>
+                                <th data-ar="البريد الإلكتروني" data-en="Email">البريد الإلكتروني</th>
+                                <th data-ar="الدور" data-en="Role">الدور</th>
+                                <th data-ar="المشرف" data-en="Supervisor">المشرف</th>
+                                <th data-ar="الإجراءات" data-en="Actions">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Users will be populated here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>
