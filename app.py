@@ -346,27 +346,8 @@ def get_client_filter_data(current_user):
                 WHERE is_active = 1 AND salesman_name IS NOT NULL AND salesman_name != ''
                 ORDER BY salesman_name
             """)).fetchall()
-        elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Supervisors see their salesmen's clients' data
-            regions_result = db.session.execute(text("""
-                SELECT DISTINCT region FROM clients 
-                WHERE is_active = 1 AND assigned_user_id IN (
-                    SELECT id FROM users WHERE supervisor_id = :supervisor_id
-                )
-                AND region IS NOT NULL AND region != ''
-                ORDER BY region
-            """), {'supervisor_id': current_user.id}).fetchall()
-            
-            salesmen_result = db.session.execute(text("""
-                SELECT DISTINCT salesman_name FROM clients 
-                WHERE is_active = 1 AND assigned_user_id IN (
-                    SELECT id FROM users WHERE supervisor_id = :supervisor_id
-                )
-                AND salesman_name IS NOT NULL AND salesman_name != ''
-                ORDER BY salesman_name
-            """), {'supervisor_id': current_user.id}).fetchall()
         else:
-            # Regular salesmen only see their assigned clients' data
+            # Regular users only see their assigned clients' data
             regions_result = db.session.execute(text("""
                 SELECT DISTINCT region FROM clients 
                 WHERE is_active = 1 AND assigned_user_id = :user_id 
