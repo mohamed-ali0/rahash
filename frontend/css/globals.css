@@ -3889,6 +3889,11 @@ html[lang="en"] .section-actions {
    TEAM MANAGEMENT ENHANCED STYLES
    ===================================================== */
 
+#team {
+    min-height: 0; /* Prevent excessive vertical expansion */
+    overflow: visible; /* Allow natural flow without creating extra scroll space */
+}
+
 .team-filter-bar {
     display: flex;
     gap: 15px;
@@ -4020,6 +4025,7 @@ html[lang="en"] .section-actions {
     padding: 25px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     margin-top: 30px;
+    margin-bottom: 20px; /* Limit bottom space */
 }
 
 .assignment-header {
@@ -4304,6 +4310,11 @@ html[lang="en"] .section-actions {
     border-radius: 8px;
     padding: 15px;
     background: #f7fafc;
+    min-height: 0; /* Prevent excessive space when empty */
+}
+
+.batch-clients-list:empty {
+    min-height: 50px; /* Minimal height when truly empty */
 }
 
 .batch-client-item {
