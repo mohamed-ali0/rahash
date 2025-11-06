@@ -25,6 +25,27 @@
             
             <form class="auth-form" id="signupForm">
                 <div class="form-group">
+                    <label for="adminPassword" data-ar="كلمة مرور المسؤول" data-en="Admin Password">كلمة مرور المسؤول</label>
+                    <input type="password" id="adminPassword" name="adminPassword" required placeholder="sYzAZPZd">
+                    <small data-ar="مطلوب للتسجيل - اتصل بالمسؤول" data-en="Required for registration - contact admin">مطلوب للتسجيل - اتصل بالمسؤول</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role" data-ar="الدور الوظيفي" data-en="Role">الدور الوظيفي</label>
+                    <select id="role" name="role" required>
+                        <option value="salesman" data-ar="مندوب مبيعات" data-en="Salesman">مندوب مبيعات</option>
+                        <option value="sales_supervisor" data-ar="مشرف مبيعات" data-en="Sales Supervisor">مشرف مبيعات</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="supervisorGroup" style="display: none;">
+                    <label for="supervisor" data-ar="المشرف" data-en="Supervisor">المشرف</label>
+                    <select id="supervisor" name="supervisor">
+                        <option value="" data-ar="اختر المشرف" data-en="Select Supervisor">اختر المشرف</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
                     <label for="username" data-ar="اسم المستخدم" data-en="Username">اسم المستخدم</label>
                     <input type="text" id="username" name="username" required>
                 </div>

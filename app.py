@@ -140,13 +140,18 @@ def login_page():
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
-    """User registration"""
+    """User registration - requires admin password"""
     try:
         data = request.get_json()
         
         # Validate required fields
         if not data.get('username') or not data.get('email') or not data.get('password'):
             return jsonify({'message': 'Username, email, and password are required'}), 400
+        
+        # Check admin password (HARDCODED)
+        admin_password = data.get('admin_password')
+        if admin_password != 'sYzAZPZd':
+            return jsonify({'message': 'Invalid admin password'}), 403
         
         # Check if user already exists
         existing_user = User.query.filter(

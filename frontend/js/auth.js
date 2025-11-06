@@ -88,6 +88,8 @@ function setupFormHandlers() {
     if (signupForm) {
         signupForm.addEventListener('submit', handleSignup);
         setupPasswordValidation();
+        setupRoleSelector();
+        loadSupervisors();
     }
 }
 
@@ -144,10 +146,12 @@ async function handleSignup(event) {
     
     const formData = new FormData(event.target);
     const signupData = {
+        admin_password: formData.get('adminPassword'),
         username: formData.get('username'),
         email: formData.get('email'),
         password: formData.get('password'),
-        role: formData.get('role')
+        role: formData.get('role'),
+        supervisor_id: formData.get('supervisor') || null
     };
     
     // Validate password confirmation
@@ -265,6 +269,51 @@ function validateEmail(email) {
 
 function validatePassword(password) {
     return password && password.length >= 6;
+}
+
+// Setup role selector to show/hide supervisor dropdown
+function setupRoleSelector() {
+    const roleSelect = document.getElementById('role');
+    const supervisorGroup = document.getElementById('supervisorGroup');
+    
+    if (roleSelect && supervisorGroup) {
+        roleSelect.addEventListener('change', function() {
+            if (this.value === 'salesman') {
+                supervisorGroup.style.display = 'block';
+            } else {
+                supervisorGroup.style.display = 'none';
+            }
+        });
+    }
+}
+
+// Load supervisors for dropdown
+async function loadSupervisors() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/supervisors/all`);
+        
+        if (response.ok) {
+            const supervisors = await response.json();
+            const supervisorSelect = document.getElementById('supervisor');
+            
+            if (supervisorSelect) {
+                // Clear existing options except the first one
+                supervisorSelect.innerHTML = '<option value="">' + 
+                    (currentLanguage === 'ar' ? 'اختر المشرف' : 'Select Supervisor') + 
+                    '</option>';
+                
+                // Add supervisor options
+                supervisors.forEach(supervisor => {
+                    const option = document.createElement('option');
+                    option.value = supervisor.id;
+                    option.textContent = supervisor.username;
+                    supervisorSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading supervisors:', error);
+    }
 }
 
 // Check if user is already logged in
