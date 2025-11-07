@@ -2654,9 +2654,11 @@ def get_visit_report_html(report_id):
         else:
             return "Permission denied", 403
         
-        # Read the HTML template based on user role
-        # Salesmen use a different template
-        if current_user.role == UserRole.SALESMAN:
+        # Read the HTML template based on REPORT CREATOR's role (not viewer's role)
+        # Reports created by salesmen use the salesman template (green)
+        # Reports created by supervisors/admins use the general template (gold)
+        report_creator = User.query.get(report.user_id)
+        if report_creator and report_creator.role == UserRole.SALESMAN:
             template_file = 'templates/visit_report_salesman.html'
         else:
             template_file = 'templates/visit_report.html'
