@@ -2338,8 +2338,18 @@ def get_visit_report_images(current_user, report_id):
         if not report:
             return jsonify({'message': 'Visit report not found'}), 404
         
-        # Check permission - only super admin or report creator can view
-        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+        # Check permission - super admin, report creator, or supervisor of report creator
+        allowed = False
+        if current_user.role == UserRole.SUPER_ADMIN:
+            allowed = True
+        elif report.user_id == current_user.id:
+            allowed = True
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            report_creator = User.query.get(report.user_id)
+            if report_creator and report_creator.supervisor_id == current_user.id:
+                allowed = True
+        
+        if not allowed:
             return jsonify({'message': 'Permission denied'}), 403
         
         # Get all images
@@ -2368,8 +2378,18 @@ def get_visit_report(current_user, report_id):
         if not report:
             return jsonify({'message': 'Visit report not found'}), 404
         
-        # Check permission - only super admin or report creator can view
-        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+        # Check permission - super admin, report creator, or supervisor of report creator
+        allowed = False
+        if current_user.role == UserRole.SUPER_ADMIN:
+            allowed = True
+        elif report.user_id == current_user.id:
+            allowed = True
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            report_creator = User.query.get(report.user_id)
+            if report_creator and report_creator.supervisor_id == current_user.id:
+                allowed = True
+        
+        if not allowed:
             return jsonify({'message': 'Permission denied'}), 403
         
         # Get first image for display
@@ -2619,8 +2639,19 @@ def get_visit_report_html(report_id):
         if not report:
             return "Report not found", 404
         
-        # Check permission - only super admin or report creator can view
-        if current_user.role != UserRole.SUPER_ADMIN and report.user_id != current_user.id:
+        # Check permission - super admin, report creator, or supervisor of report creator
+        if current_user.role == UserRole.SUPER_ADMIN:
+            # Admin can view all
+            pass
+        elif report.user_id == current_user.id:
+            # Creator can view their own
+            pass
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            # Check if report creator is under this supervisor
+            report_creator = User.query.get(report.user_id)
+            if not report_creator or report_creator.supervisor_id != current_user.id:
+                return "Permission denied - Not your salesman's report", 403
+        else:
             return "Permission denied", 403
         
         # Read the HTML template based on user role
