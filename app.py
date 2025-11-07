@@ -266,7 +266,21 @@ def get_client_names_only(current_user):
         if current_user.role == UserRole.SUPER_ADMIN:
             query = text("SELECT id, name, region FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            # Supervisors see their own clients AND their salesmen's clients
+            query = text("""
+                SELECT id, name, region FROM clients 
+                WHERE is_active = 1 AND (
+                    assigned_user_id = :user_id 
+                    OR assigned_user_id IN (
+                        SELECT id FROM users WHERE supervisor_id = :user_id
+                    )
+                )
+                ORDER BY name
+            """)
+            result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
         else:
+            # Salesmen only see their own clients
             query = text("SELECT id, name, region FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
             result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
         
@@ -1799,7 +1813,7 @@ def assign_client_to_salesman(current_user):
 
 @app.route('/api/supervisors/unassign-client/<int:client_id>', methods=['PUT'])
 @token_required
-def unassign_client_from_salesman(current_user):
+def unassign_client_from_salesman(current_user, client_id):
     """Remove client from salesman (supervisor only)"""
     try:
         # Check if user is supervisor or admin
