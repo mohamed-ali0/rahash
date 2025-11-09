@@ -24,7 +24,8 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    clients = db.relationship('Client', back_populates='assigned_user', lazy=True)
+    clients = db.relationship('Client', foreign_keys='Client.assigned_user_id', back_populates='assigned_user', lazy=True)
+    shared_clients = db.relationship('Client', foreign_keys='Client.shared_with_salesman_id', back_populates='shared_with_salesman', lazy=True)
     visit_reports = db.relationship('VisitReport', backref='user', lazy=True)
     
     # Supervisor-Salesman relationship
