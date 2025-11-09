@@ -15,11 +15,20 @@ import os
 
 def migrate_database():
     """Add shared_with_salesman_id field to clients table"""
-    db_path = 'business_management.db'
+    # Check both locations: root and instance folder
+    db_paths = ['business_management.db', 'instance/business_management.db']
+    db_path = None
     
-    if not os.path.exists(db_path):
-        print(f"Error: Database file '{db_path}' not found!")
+    for path in db_paths:
+        if os.path.exists(path):
+            db_path = path
+            break
+    
+    if not db_path:
+        print(f"Error: Database file not found in: {db_paths}")
         return False
+    
+    print(f"Found database at: {db_path}")
     
     try:
         conn = sqlite3.connect(db_path)
