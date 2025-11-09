@@ -593,6 +593,10 @@ def get_clients_list(current_user):
             salesman_ids = [s.id for s in salesmen]
             salesman_ids.append(current_user.id)  # Include supervisor's own clients
             
+            print(f"[SUPERVISOR CLIENT LIST] Supervisor ID: {current_user.id}, Username: {current_user.username}")
+            print(f"[SUPERVISOR CLIENT LIST] Found {len(salesmen)} salesmen under this supervisor")
+            print(f"[SUPERVISOR CLIENT LIST] Salesman IDs: {salesman_ids}")
+            
             if show_all:
                 query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids))
             else:
@@ -617,6 +621,9 @@ def get_clients_list(current_user):
         
         # Apply pagination
         clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()
+        
+        if current_user.role == UserRole.SALES_SUPERVISOR:
+            print(f"[SUPERVISOR CLIENT LIST] Total clients found: {total_count}, Returning page {page}: {len(clients)} clients")
         
         clients_data = []
         for client in clients:
