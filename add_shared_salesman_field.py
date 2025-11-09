@@ -15,7 +15,7 @@ import os
 
 def migrate_database():
     """Add shared_with_salesman_id field to clients table"""
-    db_path = 'sales_system.db'
+    db_path = 'business_management.db'
     
     if not os.path.exists(db_path):
         print(f"Error: Database file '{db_path}' not found!")
