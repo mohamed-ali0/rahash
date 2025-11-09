@@ -267,16 +267,21 @@ def get_client_names_only(current_user):
             query = text("SELECT id, name, region FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
         elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Supervisors see ONLY their own clients (they own them)
+            # Supervisors see their own clients AND their salesmen's clients
             query = text("""
                 SELECT id, name, region FROM clients 
-                WHERE is_active = 1 AND assigned_user_id = :user_id
+                WHERE is_active = 1 AND (
+                    assigned_user_id = :user_id 
+                    OR assigned_user_id IN (
+                        SELECT id FROM users WHERE supervisor_id = :user_id AND role = :salesman_role
+                    )
+                )
                 ORDER BY name
             """)
-            result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
+            result = db.session.execute(query, {'user_id': current_user.id, 'salesman_role': UserRole.SALESMAN.value}).fetchall()
         else:
-            # Salesmen see clients SHARED with them (read-only access)
-            query = text("SELECT id, name, region FROM clients WHERE is_active = 1 AND shared_with_salesman_id = :user_id ORDER BY name")
+            # Salesmen see only their own clients
+            query = text("SELECT id, name, region FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
             result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
         
         # Return minimal data - just ID and name
@@ -295,22 +300,31 @@ def get_client_names_with_salesman(current_user):
     try:
         from sqlalchemy import text
         
-        # Use raw SQL for maximum speed - get id, name, region, salesman_name, assigned_user_id, shared_with_salesman_id
+        # Use raw SQL for maximum speed - get id, name, region, salesman_name, and assigned_user_id
         # For batch assignment
         if current_user.role == UserRole.SUPER_ADMIN:
             # Admin sees all clients
-            query = text("SELECT id, name, region, salesman_name, assigned_user_id, shared_with_salesman_id FROM clients WHERE is_active = 1 ORDER BY name")
+            query = text("SELECT id, name, region, salesman_name, assigned_user_id FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
         elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Supervisor sees only THEIR clients (they own them, can share with salesmen)
-            query = text("SELECT id, name, region, salesman_name, assigned_user_id, shared_with_salesman_id FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
-            result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
+            # Supervisor sees their own clients and their salesmen's clients
+            query = text("""
+                SELECT id, name, region, salesman_name, assigned_user_id FROM clients 
+                WHERE is_active = 1 AND (
+                    assigned_user_id = :user_id
+                    OR assigned_user_id IN (
+                        SELECT id FROM users WHERE supervisor_id = :user_id AND role = :salesman_role
+                    )
+                )
+                ORDER BY name
+            """)
+            result = db.session.execute(query, {'user_id': current_user.id, 'salesman_role': UserRole.SALESMAN.value}).fetchall()
         else:
             # Salesmen don't need batch assignment, but return empty list gracefully
             return jsonify([]), 200
         
-        # Return data with salesman name and shared_with_salesman_id
-        clients = [{'id': row[0], 'name': row[1], 'region': row[2], 'salesman_name': row[3], 'assigned_user_id': row[4], 'shared_with_salesman_id': row[5]} for row in result]
+        # Return data with salesman name
+        clients = [{'id': row[0], 'name': row[1], 'region': row[2], 'salesman_name': row[3], 'assigned_user_id': row[4]} for row in result]
         
         return jsonify(clients), 200
         
@@ -586,23 +600,21 @@ def get_clients_list(current_user):
             else:
                 query = Client.query.filter_by(is_active=True)
         elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Supervisor sees ONLY clients they OWN (assigned_user_id = supervisor)
-            # When supervisor shares clients with salesmen, they still own them
-            print(f"[SUPERVISOR CLIENT LIST] Supervisor ID: {current_user.id}, Username: {current_user.username}")
+            # Supervisor sees clients assigned to them + their salesmen's clients
+            salesmen = User.query.filter_by(supervisor_id=current_user.id, role=UserRole.SALESMAN).all()
+            salesman_ids = [s.id for s in salesmen]
+            salesman_ids.append(current_user.id)  # Include supervisor's own clients
             
+            if show_all:
+                query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids))
+            else:
+                query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids), Client.is_active == True)
+        else:
+            # Salesmen see only their own clients
             if show_all:
                 query = Client.query.filter_by(assigned_user_id=current_user.id)
             else:
                 query = Client.query.filter_by(assigned_user_id=current_user.id, is_active=True)
-        else:
-            # Salesmen see clients SHARED with them (shared_with_salesman_id = salesman)
-            # They get READ-ONLY access (can view and create reports, but cannot edit)
-            print(f"[SALESMAN CLIENT LIST] Salesman ID: {current_user.id}, Username: {current_user.username}")
-            
-            if show_all:
-                query = Client.query.filter_by(shared_with_salesman_id=current_user.id)
-            else:
-                query = Client.query.filter_by(shared_with_salesman_id=current_user.id, is_active=True)
         
         # Apply region filter if provided
         if region_filter:
@@ -617,9 +629,6 @@ def get_clients_list(current_user):
         
         # Apply pagination
         clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()
-        
-        if current_user.role == UserRole.SALES_SUPERVISOR:
-            print(f"[SUPERVISOR CLIENT LIST] Total clients found: {total_count}, Returning page {page}: {len(clients)} clients")
         
         clients_data = []
         for client in clients:
@@ -1808,15 +1817,12 @@ def assign_client_to_salesman(current_user):
             if client.assigned_user_id != current_user.id:
                 return jsonify({'message': 'You do not own this client'}), 403
         
-        # SHARE client with salesman (supervisor remains owner)
-        # assigned_user_id = supervisor (unchanged)
-        # shared_with_salesman_id = salesman (NEW - grants read-only access)
-        # salesman_name = display field (unchanged)
-        client.shared_with_salesman_id = salesman_id
+        # Assign client to salesman - ownership moves to salesman
+        client.assigned_user_id = salesman_id
         client.salesman_name = salesman.username
         db.session.commit()
         
-        print(f"[ASSIGN CLIENT] Client {client.name} shared with salesman {salesman.username}, owner: {client.assigned_user_id}")
+        print(f"[ASSIGN CLIENT] Client {client.name} assigned to salesman {salesman.username}")
         
         return jsonify({'message': 'Client assigned successfully'}), 200
         
@@ -1843,13 +1849,12 @@ def unassign_client_from_salesman(current_user, client_id):
             if client.assigned_user_id != current_user.id:
                 return jsonify({'message': 'Permission denied - not your client'}), 403
         
-        # UNSHARE client from salesman (supervisor remains owner)
-        # Clear shared_with_salesman_id and salesman_name
-        client.shared_with_salesman_id = None
+        # Return client to supervisor
+        client.assigned_user_id = current_user.id
         client.salesman_name = None
         db.session.commit()
         
-        print(f"[UNASSIGN CLIENT] Client {client.name} unshared from salesman, owner remains: {client.assigned_user_id}")
+        print(f"[UNASSIGN CLIENT] Client {client.name} returned to supervisor {current_user.username}")
         
         return jsonify({'message': 'Client unassigned successfully'}), 200
         

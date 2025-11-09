@@ -24,8 +24,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    clients = db.relationship('Client', foreign_keys='Client.assigned_user_id', back_populates='assigned_user', lazy=True)
-    shared_clients = db.relationship('Client', foreign_keys='Client.shared_with_salesman_id', back_populates='shared_with_salesman', lazy=True)
+    clients = db.relationship('Client', back_populates='assigned_user', lazy=True)
     visit_reports = db.relationship('VisitReport', backref='user', lazy=True)
     
     # Supervisor-Salesman relationship
@@ -68,14 +67,12 @@ class Client(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('persons.id'))
     purchasing_manager_id = db.Column(db.Integer, db.ForeignKey('persons.id'))
     accountant_id = db.Column(db.Integer, db.ForeignKey('persons.id'))
-    assigned_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Owner (supervisor) - full access
-    shared_with_salesman_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Shared with salesman - read-only
+    assigned_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    assigned_user = db.relationship('User', foreign_keys=[assigned_user_id], back_populates='clients', lazy=True)
-    shared_with_salesman = db.relationship('User', foreign_keys=[shared_with_salesman_id], lazy=True)
+    assigned_user = db.relationship('User', back_populates='clients', lazy=True)
     images = db.relationship('ClientImage', backref='client', lazy=True, cascade='all, delete-orphan')
     visit_reports = db.relationship('VisitReport', backref='client', lazy=True)
     
