@@ -605,6 +605,9 @@ def get_clients_list(current_user):
             salesman_ids = [s.id for s in salesmen]
             salesman_ids.append(current_user.id)  # Include supervisor's own clients
             
+            print(f"[SUPERVISOR CLIENT LIST] Supervisor {current_user.username} (ID {current_user.id})")
+            print(f"[SUPERVISOR CLIENT LIST] Salesmen IDs: {salesman_ids}")
+            
             if show_all:
                 query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids))
             else:
