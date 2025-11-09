@@ -67,12 +67,14 @@ class Client(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('persons.id'))
     purchasing_manager_id = db.Column(db.Integer, db.ForeignKey('persons.id'))
     accountant_id = db.Column(db.Integer, db.ForeignKey('persons.id'))
-    assigned_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    assigned_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Owner (supervisor) - full access
+    shared_with_salesman_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Shared with salesman - read-only
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
-    assigned_user = db.relationship('User', back_populates='clients', lazy=True)
+    assigned_user = db.relationship('User', foreign_keys=[assigned_user_id], back_populates='clients', lazy=True)
+    shared_with_salesman = db.relationship('User', foreign_keys=[shared_with_salesman_id], lazy=True)
     images = db.relationship('ClientImage', backref='client', lazy=True, cascade='all, delete-orphan')
     visit_reports = db.relationship('VisitReport', backref='client', lazy=True)
     
