@@ -267,18 +267,19 @@ def get_client_names_only(current_user):
             query = text("SELECT id, name, region FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
         elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Supervisors see their own clients AND their salesmen's clients
+            # Supervisors see their own clients AND their team salesmen's clients
+            # Note: Avoid strict role comparison to prevent enum storage mismatch issues
             query = text("""
                 SELECT id, name, region FROM clients 
                 WHERE is_active = 1 AND (
                     assigned_user_id = :user_id 
                     OR assigned_user_id IN (
-                        SELECT id FROM users WHERE supervisor_id = :user_id AND role = :salesman_role
+                        SELECT id FROM users WHERE supervisor_id = :user_id
                     )
                 )
                 ORDER BY name
             """)
-            result = db.session.execute(query, {'user_id': current_user.id, 'salesman_role': UserRole.SALESMAN.value}).fetchall()
+            result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
         else:
             # Salesmen see only their own clients
             query = text("SELECT id, name, region FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id ORDER BY name")
@@ -307,18 +308,18 @@ def get_client_names_with_salesman(current_user):
             query = text("SELECT id, name, region, salesman_name, assigned_user_id FROM clients WHERE is_active = 1 ORDER BY name")
             result = db.session.execute(query).fetchall()
         elif current_user.role == UserRole.SALES_SUPERVISOR:
-            # Supervisor sees their own clients and their salesmen's clients
+            # Supervisor sees their own clients and their team salesmen's clients
             query = text("""
                 SELECT id, name, region, salesman_name, assigned_user_id FROM clients 
                 WHERE is_active = 1 AND (
                     assigned_user_id = :user_id
                     OR assigned_user_id IN (
-                        SELECT id FROM users WHERE supervisor_id = :user_id AND role = :salesman_role
+                        SELECT id FROM users WHERE supervisor_id = :user_id
                     )
                 )
                 ORDER BY name
             """)
-            result = db.session.execute(query, {'user_id': current_user.id, 'salesman_role': UserRole.SALESMAN.value}).fetchall()
+            result = db.session.execute(query, {'user_id': current_user.id}).fetchall()
         else:
             # Salesmen don't need batch assignment, but return empty list gracefully
             return jsonify([]), 200
