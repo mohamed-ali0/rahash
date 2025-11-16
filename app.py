@@ -2283,9 +2283,23 @@ def create_visit_report(current_user):
         if not client:
             return jsonify({'message': 'Client not found'}), 404
         
-        # Only super admin can create reports for any client, others only for assigned clients
-        if current_user.role != UserRole.SUPER_ADMIN and client.assigned_user_id != current_user.id:
-            return jsonify({'message': 'Permission denied: You can only create reports for clients assigned to you'}), 403
+        # Permission: 
+        # - SUPER_ADMIN can create for any client
+        # - User can create for clients assigned to themselves
+        # - SALES_SUPERVISOR can create for clients assigned to salesmen they supervise
+        if current_user.role != UserRole.SUPER_ADMIN:
+            is_self_assigned = client.assigned_user_id == current_user.id
+            is_supervisor_allowed = False
+            if current_user.role == UserRole.SALES_SUPERVISOR and client.assigned_user_id is not None:
+                try:
+                    assigned_user = User.query.get(client.assigned_user_id)
+                    if assigned_user and assigned_user.role == UserRole.SALESMAN and assigned_user.supervisor_id == current_user.id:
+                        is_supervisor_allowed = True
+                except Exception:
+                    is_supervisor_allowed = False
+            
+            if not (is_self_assigned or is_supervisor_allowed):
+                return jsonify({'message': 'Permission denied: You can only create reports for your clients or clients of salesmen you supervise'}), 403
         
         # Create visit report
         report = VisitReport(
