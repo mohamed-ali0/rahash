@@ -201,7 +201,9 @@ function loadSectionData(sectionId) {
             if (typeof DashboardManager !== 'undefined') DashboardManager.load();
             break;
         case 'clients':
-            if (typeof ClientManager !== 'undefined') ClientManager.loadClients();
+            if (typeof ClientManager !== 'undefined' && (!ClientManager.currentClients || ClientManager.currentClients.length === 0)) {
+                ClientManager.loadClients();
+            }
             break;
         case 'products':
             if (typeof ProductManager !== 'undefined') ProductManager.loadProducts();

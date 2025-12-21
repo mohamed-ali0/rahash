@@ -7,6 +7,7 @@
 const ClientManager = {
     currentClients: [],
     allRegions: [],
+    isFiltered: false,  // Track if filter is active
 
     showAddClientForm: function () {
         // Create comprehensive add client modal
@@ -412,8 +413,13 @@ const ClientManager = {
     },
 
     loadClients: async function (statusFilter = 'active') {
-        console.log('⚠️ loadClients called with:', statusFilter);
-        console.trace('Call stack for loadClients:');
+        console.log('⚠️ loadClients called with:', statusFilter, 'isFiltered:', this.isFiltered);
+
+        // CRITICAL: If filter is active, block all reload attempts
+        if (this.isFiltered) {
+            console.log('🛑 Blocked loadClients - isFiltered flag is true');
+            return; // Don't override filtered results
+        }
         try {
             // Show loading state immediately
             const clientsList = document.getElementById('clientsList');
@@ -484,12 +490,27 @@ const ClientManager = {
 
     loadClientThumbnails: async function (clients) {
         /**Load thumbnails for clients that have them - called after displaying cards*/
+
+        // Cancel any previous thumbnail loading
+        if (this.thumbnailAbortController) {
+            this.thumbnailAbortController.abort();
+        }
+        this.thumbnailAbortController = new AbortController();
+        const signal = this.thumbnailAbortController.signal;
+
         const clientsWithThumbnails = clients.filter(client => client.has_thumbnail);
 
         for (const client of clientsWithThumbnails) {
+            // Check if aborted (user clicked to expand a client)
+            if (signal.aborted) {
+                console.log('🛑 Thumbnail loading cancelled - priority request');
+                break;
+            }
+
             try {
                 const response = await fetch(`${API_BASE_URL}/clients/${client.id}/thumbnail`, {
-                    headers: getAuthHeaders()
+                    headers: getAuthHeaders(),
+                    signal: signal  // Allow aborting this request
                 });
 
                 if (response.ok) {
@@ -500,6 +521,10 @@ const ClientManager = {
                     }
                 }
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('🛑 Thumbnail request aborted for priority');
+                    break;  // Stop loading more thumbnails
+                }
                 console.error(`Error loading thumbnail for client ${client.id}:`, error);
                 // Keep the loading indicator or show placeholder
             }
@@ -785,7 +810,14 @@ const ClientManager = {
     },
 
 
-    displayClients: function (clients, append = false) {
+    displayClients: function (clients, append = false, fromFilter = false) {
+        // CRITICAL: If filtering is active but this call is NOT from filter, block it
+        // This prevents stale loadClients calls from overwriting filtered results
+        if (this.isFiltered && !fromFilter && !append) {
+            console.log('🛑 Blocked displayClients - isFiltered but call is not from filter');
+            return;
+        }
+
         const clientsList = document.getElementById('clientsList');
 
         // Check if user is salesman (no edit/delete permissions)
@@ -912,6 +944,7 @@ const ClientManager = {
         // If search term or filters are cleared, reload the full list with infinite scroll
         if (!searchTerm.trim() && !selectedRegion.trim() && !selectedSalesman.trim()) {
             console.log('📋 No filters - loading all clients');
+            this.isFiltered = false;  // Clear filter flag
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
             this.loadClients(currentStatus); // Reloads page 1 and re-enables infinite scroll
@@ -931,6 +964,7 @@ const ClientManager = {
 
     loadFilteredClients: async function (selectedRegion = '', selectedSalesman = '') {
         /**Load filtered clients from backend (searches ALL data, not just displayed)*/
+        this.isFiltered = true;  // Mark that we're in filtered mode
         try {
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
@@ -960,7 +994,7 @@ const ClientManager = {
                 this.currentClients = filteredClients;
 
                 // Display results
-                this.displayClients(filteredClients, false);
+                this.displayClients(filteredClients, false, true); // fromFilter = true
 
                 // Load thumbnails
                 this.loadClientThumbnails(filteredClients);
@@ -969,6 +1003,11 @@ const ClientManager = {
                 const loadMoreBtn = document.querySelector('#clientsList .load-more-button');
                 if (loadMoreBtn) {
                     loadMoreBtn.remove();
+                }
+                // Disconnect any existing observers
+                if (this.loadMoreObserver) {
+                    this.loadMoreObserver.disconnect();
+                    this.loadMoreObserver = null;
                 }
                 this.hasMoreClients = false; // Prevent observer from firing
                 // ---------------------------------------------------------
@@ -986,6 +1025,7 @@ const ClientManager = {
 
     searchClients: async function (searchTerm, selectedRegion = '', selectedSalesman = '') {
         /**Search ALL clients using backend API*/
+        this.isFiltered = true;  // Mark that we're in filtered mode
         try {
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
@@ -1015,7 +1055,7 @@ const ClientManager = {
                 this.currentClients = searchResults;
 
                 // Display results
-                this.displayClients(searchResults, false);
+                this.displayClients(searchResults, false, true); // fromFilter = true
 
                 // Load thumbnails for search results
                 this.loadClientThumbnails(searchResults);
@@ -1064,6 +1104,12 @@ const ClientManager = {
     },
 
     viewClientDetails: async function (clientId) {
+        // PRIORITY: Cancel background thumbnail loading to give priority to this request
+        if (this.thumbnailAbortController) {
+            this.thumbnailAbortController.abort();
+            console.log('⚡ Cancelled thumbnail loading for priority client detail request');
+        }
+
         // Show loading modal first
         const modal = document.createElement('div');
         modal.className = 'expanded-modal';
