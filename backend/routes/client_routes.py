@@ -85,9 +85,10 @@ def get_clients_list(current_user):
     try:
         show_all = request.args.get('show_all', 'false').lower() == 'true'
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 20))
+        per_page = int(request.args.get('per_page', 500))  # Increased for filter results
         region_filter = request.args.get('region', '').strip()
         salesman_filter = request.args.get('salesman', '').strip()
+
         
         if current_user.role == UserRole.SUPER_ADMIN:
             query = Client.query if show_all else Client.query.filter_by(is_active=True)
@@ -350,11 +351,20 @@ def search_clients(current_user):
     try:
         search_term = request.args.get('q', '').strip()
         page = int(request.args.get('page', 1))
-        per_page = int(request.args.get('per_page', 20))
+        per_page = int(request.args.get('per_page', 500))  # Increased for filter results
         show_all = request.args.get('show_all', 'false').lower() == 'true'
+        region_filter = request.args.get('region', '').strip()
+        salesman_filter = request.args.get('salesman', '').strip()
         
         if current_user.role == UserRole.SUPER_ADMIN:
             query = Client.query if show_all else Client.query.filter_by(is_active=True)
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            # Include all salesmen under this supervisor
+            salesmen = User.query.filter_by(supervisor_id=current_user.id, role=UserRole.SALESMAN).all()
+            salesman_ids = [s.id for s in salesmen] + [current_user.id]
+            query = Client.query.filter(Client.assigned_user_id.in_(salesman_ids))
+            if not show_all:
+                query = query.filter(Client.is_active == True)
         else:
             query = Client.query.filter_by(assigned_user_id=current_user.id)
             if not show_all:
@@ -362,6 +372,11 @@ def search_clients(current_user):
         
         if search_term:
             query = query.filter(Client.name.ilike(f'%{search_term}%'))
+        
+        if region_filter:
+            query = query.filter_by(region=region_filter)
+        if salesman_filter:
+            query = query.filter_by(salesman_name=salesman_filter)
         
         total_count = query.count()
         clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()

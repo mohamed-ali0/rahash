@@ -7,6 +7,8 @@ import os
 import json
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/api/settings')
+predefined_notes_bp = Blueprint('predefined_notes', __name__, url_prefix='/api')
+
 
 @settings_bp.route('', methods=['GET'])
 @token_required
@@ -98,6 +100,19 @@ def update_price_tolerance(current_user):
 @token_required
 def get_predefined_notes(current_user):
     """Get predefined notes for visit reports"""
+    try:
+        with open('templates/predefined_notes.json', 'r', encoding='utf-8') as f:
+            predefined_notes = json.load(f)
+        return jsonify(predefined_notes)
+    except Exception as e:
+        print(f"Error loading predefined notes: {e}")
+        return jsonify({'message': 'Error loading predefined notes'}), 500
+
+
+@predefined_notes_bp.route('/predefined-notes', methods=['GET'])
+@token_required
+def get_predefined_notes_alias(current_user):
+    """Get predefined notes - alias route for frontend"""
     try:
         with open('templates/predefined_notes.json', 'r', encoding='utf-8') as f:
             predefined_notes = json.load(f)

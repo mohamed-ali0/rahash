@@ -8,7 +8,7 @@ def register_blueprints(app: Flask):
     # Import all blueprints
     from backend.routes.auth_routes import auth_bp
     from backend.routes.static_routes import static_bp
-    from backend.routes.settings_routes import settings_bp
+    from backend.routes.settings_routes import settings_bp, predefined_notes_bp
     from backend.routes.user_routes import users_bp, supervisors_bp
     from backend.routes.team_routes import team_bp
     from backend.routes.client_routes import client_bp
@@ -19,8 +19,10 @@ def register_blueprints(app: Flask):
     app.register_blueprint(auth_bp)
     app.register_blueprint(static_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(predefined_notes_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(supervisors_bp)
+
     app.register_blueprint(team_bp)
     app.register_blueprint(client_bp)
     app.register_blueprint(product_bp)
