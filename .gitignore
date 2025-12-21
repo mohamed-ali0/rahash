@@ -5,6 +5,8 @@ env/
 # Python cache
 __pycache__/
 *.py[cod]
+*/__pycache__/
+**/__pycache__/
 
 # IDE / Editor files
 .vscode/
@@ -23,3 +25,13 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.bak
+
+# Settings file (contains runtime config)
+sys_settings.json
+
+# Garbage/old files
+garbage/
+
+# Backup files
+*_backup.*
+*_old.*

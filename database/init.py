@@ -2,7 +2,7 @@
 
 from flask import Flask
 from flask_migrate import Migrate
-from database.models import db, User, Person, Client, Product, UserRole
+from backend.models import db, User, Person, Client, Product, UserRole  # Import from backend.models!
 from werkzeug.security import generate_password_hash
 import os
 

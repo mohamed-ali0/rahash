@@ -1,0 +1,56 @@
+/* Base CSS - Reset, Variables, Typography */
+
+/* CSS Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* CSS Variables */
+:root {
+    --primary-color: #97D2C0;
+    --secondary-color: #D0A74E;
+    --accent-color: #D0A74E;
+    --text-dark: #2c3e50;
+    --text-light: #666;
+    --background-light: #f8fffe;
+    --background-white: #ffffff;
+    --shadow: 0 2px 15px rgba(151, 210, 192, 0.1);
+    --shadow-hover: 0 4px 25px rgba(151, 210, 192, 0.2);
+    --border-radius: 12px;
+    --border-radius-small: 8px;
+}
+
+/* Typography */
+body {
+    font-family: 'Tajawal', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--text-dark);
+    background-color: var(--background-light);
+    direction: rtl;
+    min-height: 100vh;
+}
+
+/* Language Support */
+html[lang="en"] body {
+    direction: ltr;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+/* Links */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--secondary-color);
+}

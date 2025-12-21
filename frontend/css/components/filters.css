@@ -1,0 +1,158 @@
+/* Filter Styles */
+
+.filters {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.filters-header h3 {
+    margin: 0;
+    color: var(--text-dark);
+}
+
+.filters-toggle {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 1rem;
+    padding: 0.5rem;
+}
+
+.filters-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 0.5rem;
+    border: 2px solid #ecf0f1;
+    border-radius: var(--border-radius-small);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-filter {
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.btn-filter:hover {
+    background: var(--secondary-color);
+}
+
+.btn-clear-filters {
+    padding: 0.5rem 1rem;
+    background: white;
+    color: var(--text-dark);
+    border: 2px solid #ecf0f1;
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.btn-clear-filters:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Search Filter */
+.search-filter {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-filter input {
+    width: 100%;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    border: 2px solid #ecf0f1;
+    border-radius: var(--border-radius-small);
+    font-size: 1rem;
+}
+
+.search-filter-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+}
+
+/* Active Filters Display */
+.active-filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.filter-tag {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-tag-remove {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.filter-tag-remove:hover {
+    color: #e74c3c;
+}

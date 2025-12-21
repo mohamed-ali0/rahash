@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +8,10 @@
     <link rel="stylesheet" href="/css/globals.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@200;300;400;500;700;800;900&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
@@ -21,26 +24,44 @@
             </div>
             <button class="sidebar-close" onclick="toggleSidebar()">×</button>
         </div>
-        
+
         <div class="sidebar-content">
             <div class="user-info">
                 <span class="user-greeting" id="userGreeting"></span>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <ul>
-                    <li><a href="#dashboard" onclick="navigateAndCloseSidebar('dashboard')" data-ar="لوحة التحكم" data-en="Dashboard">📊 <span data-ar="لوحة التحكم" data-en="Dashboard">لوحة التحكم</span></a></li>
-                    <li><a href="#clients" onclick="navigateAndCloseSidebar('clients')" data-ar="إدارة العملاء" data-en="Manage Clients">👥 <span data-ar="إدارة العملاء" data-en="Manage Clients">إدارة العملاء</span></a></li>
-                    <li><a href="#products" onclick="navigateAndCloseSidebar('products')" data-ar="إدارة المنتجات" data-en="Manage Products">📦 <span data-ar="إدارة المنتجات" data-en="Manage Products">إدارة المنتجات</span></a></li>
-                    <li><a href="#reports" onclick="navigateAndCloseSidebar('reports')" data-ar="تقارير الزيارات" data-en="Visit Reports">📈 <span data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</span></a></li>
-                    <li id="teamManagementMenuItem" style="display: none;"><a href="#team" onclick="navigateAndCloseSidebar('team')" data-ar="إدارة الفريق" data-en="Team Management">👔 <span data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</span></a></li>
-                    <li id="userManagementMenuItem" style="display: none;"><a href="#users" onclick="navigateAndCloseSidebar('users')" data-ar="إدارة المستخدمين" data-en="User Management">👤 <span data-ar="إدارة المستخدمين" data-en="User Management">إدارة المستخدمين</span></a></li>
-                    <li id="systemSettingsMenuItem" style="display: none;"><a href="#settings" onclick="navigateAndCloseSidebar('settings')" data-ar="إعدادات النظام" data-en="System Settings">⚙️ <span data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</span></a></li>
+                    <li><a href="#dashboard" onclick="navigateAndCloseSidebar('dashboard')" data-ar="لوحة التحكم"
+                            data-en="Dashboard">📊 <span data-ar="لوحة التحكم" data-en="Dashboard">لوحة
+                                التحكم</span></a></li>
+                    <li><a href="#clients" onclick="navigateAndCloseSidebar('clients')" data-ar="إدارة العملاء"
+                            data-en="Manage Clients">👥 <span data-ar="إدارة العملاء" data-en="Manage Clients">إدارة
+                                العملاء</span></a></li>
+                    <li><a href="#products" onclick="navigateAndCloseSidebar('products')" data-ar="إدارة المنتجات"
+                            data-en="Manage Products">📦 <span data-ar="إدارة المنتجات" data-en="Manage Products">إدارة
+                                المنتجات</span></a></li>
+                    <li><a href="#reports" onclick="navigateAndCloseSidebar('reports')" data-ar="تقارير الزيارات"
+                            data-en="Visit Reports">📈 <span data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير
+                                الزيارات</span></a></li>
+                    <li id="teamManagementMenuItem" style="display: none;"><a href="#team"
+                            onclick="navigateAndCloseSidebar('team')" data-ar="إدارة الفريق"
+                            data-en="Team Management">👔 <span data-ar="إدارة الفريق" data-en="Team Management">إدارة
+                                الفريق</span></a></li>
+                    <li id="userManagementMenuItem" style="display: none;"><a href="#users"
+                            onclick="navigateAndCloseSidebar('users')" data-ar="إدارة المستخدمين"
+                            data-en="User Management">👤 <span data-ar="إدارة المستخدمين"
+                                data-en="User Management">إدارة المستخدمين</span></a></li>
+                    <li id="systemSettingsMenuItem" style="display: none;"><a href="#settings"
+                            onclick="navigateAndCloseSidebar('settings')" data-ar="إعدادات النظام"
+                            data-en="System Settings">⚙️ <span data-ar="إعدادات النظام"
+                                data-en="System Settings">إعدادات النظام</span></a></li>
                 </ul>
             </nav>
-            
+
             <div class="sidebar-footer">
-                <button class="btn btn-logout" onclick="logout()" data-ar="تسجيل الخروج" data-en="Logout">🚪 <span data-ar="تسجيل الخروج" data-en="Logout">تسجيل الخروج</span></button>
+                <button class="btn btn-logout" onclick="logout()" data-ar="تسجيل الخروج" data-en="Logout">🚪 <span
+                        data-ar="تسجيل الخروج" data-en="Logout">تسجيل الخروج</span></button>
                 <div class="language-toggle">
                     <button id="langToggle" class="btn-lang">EN</button>
                 </div>
@@ -73,10 +94,10 @@
 
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-    
+
     <!-- Desktop Sidebar Toggle -->
     <button class="sidebar-toggle-desktop" onclick="toggleSidebar()">☰</button>
-    
+
     <main class="main-content" id="mainContent">
         <section id="dashboard">
             <h2 data-ar="لوحة التحكم" data-en="Dashboard">لوحة التحكم</h2>
@@ -95,36 +116,42 @@
                 </div>
             </div>
         </section>
-        
+
         <section id="clients">
             <h2 data-ar="إدارة العملاء" data-en="Client Management">إدارة العملاء</h2>
             <div class="section-actions">
                 <div class="search-container">
-                    <input type="text" id="clientSearch" class="search-input" placeholder="البحث عن العملاء..." data-ar="البحث عن العملاء..." data-en="Search clients...">
+                    <input type="text" id="clientSearch" class="search-input" placeholder="البحث عن العملاء..."
+                        data-ar="البحث عن العملاء..." data-en="Search clients...">
                     <div class="search-icon">🔍</div>
                 </div>
                 <div class="filter-group">
                     <div class="filter-container">
-                        <select id="regionFilter" class="filter-select" data-ar="تصفية حسب المنطقة" data-en="Filter by region">
+                        <select id="regionFilter" class="filter-select" data-ar="تصفية حسب المنطقة"
+                            data-en="Filter by region">
                             <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
                         </select>
                     </div>
                     <div class="filter-container">
-                        <select id="salesmanFilter" class="filter-select" data-ar="تصفية حسب المندوب" data-en="Filter by salesman">
+                        <select id="salesmanFilter" class="filter-select" data-ar="تصفية حسب المندوب"
+                            data-en="Filter by salesman">
                             <option value="" data-ar="جميع المندوبين" data-en="All Salesmen">جميع المندوبين</option>
                         </select>
                     </div>
                     <div class="filter-container">
-                        <select id="clientStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة" data-en="Filter by status">
-                            <option value="active" data-ar="العملاء النشطون" data-en="Active Clients">العملاء النشطون</option>
-                            <option value="inactive" data-ar="العملاء المعطلون" data-en="Inactive Clients">العملاء المعطلون</option>
+                        <select id="clientStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة"
+                            data-en="Filter by status">
+                            <option value="active" data-ar="العملاء النشطون" data-en="Active Clients">العملاء النشطون
+                            </option>
+                            <option value="inactive" data-ar="العملاء المعطلون" data-en="Inactive Clients">العملاء
+                                المعطلون</option>
                             <option value="all" data-ar="جميع العملاء" data-en="All Clients">جميع العملاء</option>
                         </select>
                     </div>
                 </div>
                 <button class="btn btn-primary" id="addClientBtn" data-ar="إضافة عميل جديد" data-en="Add New Client">
                     <svg width="16" height="16" viewBox="0 0 24 24">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
                     <span data-ar="إضافة عميل" data-en="Add Client">إضافة عميل</span>
                 </button>
@@ -133,17 +160,18 @@
                 <!-- Client cards will be populated here -->
             </div>
         </section>
-        
+
         <section id="products">
             <h2 data-ar="إدارة المنتجات" data-en="Product Management">إدارة المنتجات</h2>
             <div class="section-actions">
                 <div class="search-container">
-                    <input type="text" id="productSearch" class="search-input" placeholder="البحث عن المنتجات..." data-ar="البحث عن المنتجات..." data-en="Search products...">
+                    <input type="text" id="productSearch" class="search-input" placeholder="البحث عن المنتجات..."
+                        data-ar="البحث عن المنتجات..." data-en="Search products...">
                     <div class="search-icon">🔍</div>
                 </div>
                 <button class="btn btn-primary" id="addProductBtn" data-ar="إضافة منتج جديد" data-en="Add New Product">
                     <svg width="16" height="16" viewBox="0 0 24 24">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
                     <span data-ar="إضافة منتج" data-en="Add Product">إضافة منتج</span>
                 </button>
@@ -152,22 +180,26 @@
                 <!-- Product cards will be populated here -->
             </div>
         </section>
-        
+
         <section id="reports">
             <h2 data-ar="تقارير الزيارات" data-en="Visit Reports">تقارير الزيارات</h2>
             <div class="section-actions">
                 <div class="filter-group">
                     <div class="filter-container">
-                        <select id="reportStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة" data-en="Filter by status">
-                            <option value="active" data-ar="التقارير النشطة" data-en="Active Reports">التقارير النشطة</option>
-                            <option value="inactive" data-ar="التقارير المعطلة" data-en="Inactive Reports">التقارير المعطلة</option>
+                        <select id="reportStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة"
+                            data-en="Filter by status">
+                            <option value="active" data-ar="التقارير النشطة" data-en="Active Reports">التقارير النشطة
+                            </option>
+                            <option value="inactive" data-ar="التقارير المعطلة" data-en="Inactive Reports">التقارير
+                                المعطلة</option>
                             <option value="all" data-ar="جميع التقارير" data-en="All Reports">جميع التقارير</option>
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="addReportBtn" data-ar="إضافة تقرير زيارة" data-en="Add Visit Report">
+                <button class="btn btn-primary" id="addReportBtn" data-ar="إضافة تقرير زيارة"
+                    data-en="Add Visit Report">
                     <svg width="16" height="16" viewBox="0 0 24 24">
-                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
                     <span data-ar="إضافة تقرير" data-en="Add Report">إضافة تقرير</span>
                 </button>
@@ -176,29 +208,31 @@
                 <!-- Visit report cards will be populated here -->
             </div>
         </section>
-        
+
         <!-- Team Management Section (Supervisors only) -->
         <section id="team" style="display: none;">
             <h2 data-ar="إدارة الفريق" data-en="Team Management">إدارة الفريق</h2>
-            
+
             <!-- Search and Filter Bar -->
             <div class="team-filter-bar">
-                <input type="text" id="salesmanSearch" class="search-input" placeholder="ابحث عن مندوب..." data-ar="ابحث عن مندوب..." data-en="Search salesman...">
+                <input type="text" id="salesmanSearch" class="search-input" placeholder="ابحث عن مندوب..."
+                    data-ar="ابحث عن مندوب..." data-en="Search salesman...">
                 <button class="btn btn-secondary" onclick="TeamManager.toggleClientFilters()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="M21 21l-4.35-4.35"/>
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
                     </svg>
                     <span data-ar="عرض العملاء" data-en="View Clients">عرض العملاء</span>
                 </button>
-                <button class="btn btn-primary" onclick="TeamManager.showAssignmentSection()" data-ar="تعيين عملاء" data-en="Assign Clients">
+                <button class="btn btn-primary" onclick="TeamManager.showAssignmentSection()" data-ar="تعيين عملاء"
+                    data-en="Assign Clients">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12h14"/>
+                        <path d="M12 5v14M5 12h14" />
                     </svg>
                     <span data-ar="تعيين عملاء" data-en="Assign Clients">تعيين عملاء</span>
                 </button>
             </div>
-            
+
             <!-- Client Filters (for viewing assigned clients) -->
             <div class="team-client-filters" id="teamClientFilters" style="display: none;">
                 <h3 data-ar="عرض العملاء المعينين" data-en="View Assigned Clients">عرض العملاء المعينين</h3>
@@ -209,11 +243,13 @@
                     <select id="teamRegionFilter" class="filter-select">
                         <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
                     </select>
-                    <input type="text" id="teamClientSearch" class="search-input" placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
+                    <input type="text" id="teamClientSearch" class="search-input" placeholder="ابحث عن عميل..."
+                        data-ar="ابحث عن عميل..." data-en="Search client...">
                     <button class="btn btn-secondary" onclick="TeamManager.loadFilteredClients()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <path d="M21 21l-4.35-4.35"/>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35" />
                         </svg>
                         <span data-ar="بحث" data-en="Search">بحث</span>
                     </button>
@@ -225,7 +261,7 @@
                     <!-- Filtered clients will be displayed here -->
                 </div>
             </div>
-            
+
             <div class="team-container">
                 <!-- Salesmen List -->
                 <div class="salesmen-section">
@@ -237,16 +273,18 @@
                         <!-- Salesman cards will be populated here -->
                     </div>
                 </div>
-                
+
                 <!-- Client Assignment Section (Hidden by default) -->
                 <div class="assignment-section" id="assignmentSection" style="display: none;">
                     <div class="assignment-header">
                         <h3 data-ar="تعيين العملاء" data-en="Assign Clients">تعيين العملاء</h3>
                         <div class="assignment-mode-toggle">
-                            <button class="btn btn-secondary btn-sm" id="batchModeBtn" onclick="TeamManager.toggleBatchMode()">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M9 11l3 3L22 4"/>
-                                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                            <button class="btn btn-secondary btn-sm" id="batchModeBtn"
+                                onclick="TeamManager.toggleBatchMode()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M9 11l3 3L22 4" />
+                                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
                                 </svg>
                                 <span data-ar="تعيين متعدد" data-en="Batch Mode">تعيين متعدد</span>
                             </button>
@@ -255,7 +293,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <!-- Single Assignment Mode -->
                     <div id="singleAssignmentMode" class="assignment-controls">
                         <div class="control-group">
@@ -264,23 +302,26 @@
                                 <option value="" data-ar="اختر مندوب" data-en="Select Salesman">اختر مندوب</option>
                             </select>
                         </div>
-                        
+
                         <div class="control-group">
                             <label data-ar="العميل" data-en="Client">العميل</label>
                             <div class="client-search-container">
-                                <input type="text" id="teamClientSearchInput" class="search-input" placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
+                                <input type="text" id="teamClientSearchInput" class="search-input"
+                                    placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
                                 <div id="teamClientSearchResults" class="search-results" style="display: none;"></div>
                             </div>
                         </div>
-                        
-                        <button class="btn btn-primary btn-assign" onclick="TeamManager.assignClient()" data-ar="تعيين" data-en="Assign">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 6L9 17l-5-5"/>
+
+                        <button class="btn btn-primary btn-assign" onclick="TeamManager.assignClient()" data-ar="تعيين"
+                            data-en="Assign">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M20 6L9 17l-5-5" />
                             </svg>
                             <span data-ar="تعيين" data-en="Assign">تعيين</span>
                         </button>
                     </div>
-                    
+
                     <!-- Batch Assignment Mode -->
                     <div id="batchAssignmentMode" style="display: none;">
                         <div class="batch-controls">
@@ -291,7 +332,8 @@
                                 </select>
                             </div>
                             <div class="batch-actions">
-                                <input type="text" id="batchClientSearch" class="search-input" placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
+                                <input type="text" id="batchClientSearch" class="search-input"
+                                    placeholder="ابحث عن عميل..." data-ar="ابحث عن عميل..." data-en="Search client...">
                                 <button class="btn btn-secondary" onclick="TeamManager.selectAllClients()">
                                     <span data-ar="تحديد الكل" data-en="Select All">تحديد الكل</span>
                                 </button>
@@ -299,29 +341,32 @@
                                     <span data-ar="إلغاء الكل" data-en="Deselect All">إلغاء الكل</span>
                                 </button>
                                 <button class="btn btn-primary" onclick="TeamManager.batchAssignClients()">
-                                    <span id="batchAssignBtnText" data-ar="تعيين المحددين" data-en="Assign Selected">تعيين المحددين (0)</span>
+                                    <span id="batchAssignBtnText" data-ar="تعيين المحددين"
+                                        data-en="Assign Selected">تعيين المحددين (0)</span>
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Batch Filters -->
                         <div class="batch-filters">
-                            <select id="batchRegionFilter" class="filter-select" onchange="TeamManager.applyBatchFilters()">
+                            <select id="batchRegionFilter" class="filter-select"
+                                onchange="TeamManager.applyBatchFilters()">
                                 <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
                             </select>
-                            <select id="batchSalesmanNameFilter" class="filter-select" onchange="TeamManager.applyBatchFilters()">
+                            <select id="batchSalesmanNameFilter" class="filter-select"
+                                onchange="TeamManager.applyBatchFilters()">
                                 <option value="" data-ar="جميع المندوبين" data-en="All Salesmen">جميع المندوبين</option>
                             </select>
                             <button class="btn btn-secondary btn-sm" onclick="TeamManager.clearBatchFilters()">
                                 <span data-ar="مسح الفلاتر" data-en="Clear Filters">مسح الفلاتر</span>
                             </button>
                         </div>
-                        
+
                         <div id="batchClientsList" class="batch-clients-list">
                             <!-- Clients with checkboxes will appear here -->
                         </div>
                     </div>
-                    
+
                     <div id="salesmanClientsDisplay" class="clients-display">
                         <!-- Assigned clients will appear here -->
                     </div>
@@ -334,11 +379,13 @@
             <h2 data-ar="إدارة المستخدمين" data-en="User Management">إدارة المستخدمين</h2>
             <div class="users-container">
                 <div class="filter-bar">
-                    <input type="text" id="userSearch" placeholder="ابحث عن مستخدم..." data-ar="ابحث عن مستخدم..." data-en="Search users...">
+                    <input type="text" id="userSearch" placeholder="ابحث عن مستخدم..." data-ar="ابحث عن مستخدم..."
+                        data-en="Search users...">
                     <select id="roleFilter" class="filter-select">
                         <option value="" data-ar="جميع الأدوار" data-en="All Roles">جميع الأدوار</option>
                         <option value="super_admin" data-ar="مسؤول النظام" data-en="Super Admin">مسؤول النظام</option>
-                        <option value="sales_supervisor" data-ar="مشرف مبيعات" data-en="Sales Supervisor">مشرف مبيعات</option>
+                        <option value="sales_supervisor" data-ar="مشرف مبيعات" data-en="Sales Supervisor">مشرف مبيعات
+                        </option>
                         <option value="salesman" data-ar="مندوب مبيعات" data-en="Salesman">مندوب مبيعات</option>
                     </select>
                 </div>
@@ -360,33 +407,39 @@
                 </div>
             </div>
         </section>
-        
+
         <section id="settings" style="display: none;">
             <h2 data-ar="إعدادات النظام" data-en="System Settings">إعدادات النظام</h2>
             <div class="settings-container">
                 <div class="settings-card">
                     <h3 data-ar="إعدادات التسعير" data-en="Pricing Settings">إعدادات التسعير</h3>
                     <div class="form-group">
-                        <label for="priceTolerance" data-ar="نطاق التسعير المسموح" data-en="Price Tolerance">نطاق التسعير المسموح:</label>
+                        <label for="priceTolerance" data-ar="نطاق التسعير المسموح" data-en="Price Tolerance">نطاق
+                            التسعير المسموح:</label>
                         <div class="input-group">
                             <input type="number" id="priceTolerance" step="0.01" min="0" max="100" placeholder="0.00">
                             <span class="input-suffix" data-ar="ريال" data-en="SAR">ريال</span>
                         </div>
-                        <small class="form-help" data-ar="الحد الأقصى للفرق المسموح به بين السعر المعروض والسعر الفعلي" data-en="Maximum allowed difference between displayed and actual price">الحد الأقصى للفرق المسموح به بين السعر المعروض والسعر الفعلي</small>
+                        <small class="form-help" data-ar="الحد الأقصى للفرق المسموح به بين السعر المعروض والسعر الفعلي"
+                            data-en="Maximum allowed difference between displayed and actual price">الحد الأقصى للفرق
+                            المسموح به بين السعر المعروض والسعر الفعلي</small>
                     </div>
-                    <button class="btn btn-primary" onclick="saveSystemSettings()" data-ar="حفظ الإعدادات" data-en="Save Settings">
+                    <button class="btn btn-primary" onclick="saveSystemSettings()" data-ar="حفظ الإعدادات"
+                        data-en="Save Settings">
                         <svg width="16" height="16" viewBox="0 0 24 24">
-                            <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+                            <path
+                                d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" />
                         </svg>
                         <span data-ar="حفظ الإعدادات" data-en="Save Settings">حفظ الإعدادات</span>
                     </button>
                 </div>
-                
+
                 <div class="settings-card">
                     <h3 data-ar="معلومات النظام" data-en="System Information">معلومات النظام</h3>
                     <div class="system-info">
                         <div class="info-item">
-                            <span class="info-label" data-ar="إصدار النظام" data-en="System Version">إصدار النظام:</span>
+                            <span class="info-label" data-ar="إصدار النظام" data-en="System Version">إصدار
+                                النظام:</span>
                             <span class="info-value">1.0.0</span>
                         </div>
                         <div class="info-item">
@@ -398,11 +451,11 @@
             </div>
         </section>
     </main>
-    
+
     <footer>
         <p>&copy; 2025 Business Management System</p>
     </footer>
-    
+
     <!-- Expanded Product View Modal -->
     <div id="expandedModal" class="expanded-modal">
         <!-- Modal content will be populated by JavaScript -->
@@ -412,7 +465,21 @@
     <div id="addProductModal" class="modal-overlay" style="display: none;">
         <!-- Modal content will be populated by JavaScript -->
     </div>
-    
-    <script src="/js/main.js"></script>
+
+    <!-- Modular JavaScript - Load in correct dependency order -->
+    <!-- Core App (includes ScrollManager, API_BASE_URL, language, navigation) -->
+    <script src="/js/core/app.js"></script>
+
+    <!-- Managers -->
+    <script src="/js/managers/client_manager.js"></script>
+    <script src="/js/managers/product_manager.js"></script>
+    <script src="/js/modules/settings_manager.js"></script>
+    <script src="/js/managers/report_manager.js"></script>
+    <script src="/js/managers/team_manager.js"></script>
+    <script src="/js/managers/user_manager.js"></script>
+
+    <!-- Search and utilities -->
+    <script src="/js/utils/search.js"></script>
 </body>
+
 </html>
