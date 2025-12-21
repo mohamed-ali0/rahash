@@ -364,9 +364,11 @@ function showSection(sectionId) {
                 loadDashboardData();
                 break;
             case 'clients':
-                // Get saved status filter or default to 'active'
-                const savedClientStatus = localStorage.getItem('clientStatusFilter') || 'active';
-                ClientManager.loadClients(savedClientStatus);
+                // Only load if not already loaded (prevents overwriting filtered results)
+                if (!ClientManager.currentClients || ClientManager.currentClients.length === 0) {
+                    const savedClientStatus = localStorage.getItem('clientStatusFilter') || 'active';
+                    ClientManager.loadClients(savedClientStatus);
+                }
                 break;
             case 'products':
                 ProductManager.loadProducts();
