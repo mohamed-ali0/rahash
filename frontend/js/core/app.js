@@ -321,31 +321,47 @@ function initializeApp() {
     }, 100);
 }
 
-// Setup navigation functionality
+// Setup navigation functionality with clean URL support
 function setupNavigation() {
     const navLinks = document.querySelectorAll('nav a');
     const sections = document.querySelectorAll('main section');
 
-    // Hide all sections except the first one
-    sections.forEach((section, index) => {
-        if (index > 0) {
-            section.style.display = 'none';
-        }
+    // Hide all sections initially
+    sections.forEach(section => {
+        section.style.display = 'none';
     });
+
+    // Get current section from URL pathname (clean URL routing)
+    const pathname = window.location.pathname;
+    const validSections = ['dashboard', 'clients', 'products', 'reports', 'team', 'users', 'settings'];
+
+    // Extract section from pathname (e.g., /clients -> clients)
+    const currentPath = pathname.replace('/', '').replace('.html', '') || 'dashboard';
+    const initialSection = validSections.includes(currentPath) ? currentPath : 'dashboard';
+
+    // Show initial section based on URL
+    showSection(initialSection, false);  // false = don't update URL (it's already correct)
 
     // Add click event listeners to navigation links
     navLinks.forEach(link => {
         link.addEventListener('click', function (e) {
             e.preventDefault();
-
             const targetId = this.getAttribute('href').substring(1);
-            showSection(targetId);
+            showSection(targetId, true);  // true = update URL
         });
+    });
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function () {
+        const newPath = window.location.pathname.replace('/', '') || 'dashboard';
+        if (validSections.includes(newPath)) {
+            showSection(newPath, false);  // false = don't update URL again
+        }
     });
 }
 
 // Show specific section
-function showSection(sectionId) {
+function showSection(sectionId, updateUrl = true) {
     const sections = document.querySelectorAll('main section');
 
     // Hide all sections
@@ -357,6 +373,11 @@ function showSection(sectionId) {
     const targetSection = document.getElementById(sectionId);
     if (targetSection) {
         targetSection.style.display = 'block';
+
+        // Update URL if requested (for navigation, not for initial load or back/forward)
+        if (updateUrl) {
+            window.history.pushState({ section: sectionId }, '', `/${sectionId}`);
+        }
 
         // Load data based on section
         switch (sectionId) {

@@ -60,7 +60,13 @@ def signup_page():
     return current_app.send_static_file('html/signup.html')
 
 @static_bp.route('/dashboard')
-def dashboard():
-    """Serve dashboard page"""
+@static_bp.route('/clients')
+@static_bp.route('/products')
+@static_bp.route('/reports')
+@static_bp.route('/team')
+@static_bp.route('/users')
+@static_bp.route('/settings')
+def app_pages():
+    """Serve main app page for all routes (SPA routing)"""
     from flask import current_app
     return current_app.send_static_file('html/index.html')
