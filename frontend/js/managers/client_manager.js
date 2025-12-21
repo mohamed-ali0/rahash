@@ -928,7 +928,7 @@ const ClientManager = {
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
 
-            let apiUrl = `${API_BASE_URL}/clients/list?page=1&per_page=500`;
+            let apiUrl = `${API_BASE_URL}/clients/list?page=1&per_page=10000`;
             if (currentStatus === 'all' || currentStatus === 'inactive') {
                 apiUrl += '&show_all=true';
             }
@@ -981,7 +981,7 @@ const ClientManager = {
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
 
-            let apiUrl = `${API_BASE_URL}/clients/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=500`;
+            let apiUrl = `${API_BASE_URL}/clients/search?q=${encodeURIComponent(searchTerm)}&page=1&per_page=10000`;
             if (currentStatus === 'all' || currentStatus === 'inactive') {
                 apiUrl += '&show_all=true';
             }

@@ -126,9 +126,10 @@ def get_clients_list(current_user):
                 query = query.filter_by(is_active=True)
         
         if region_filter:
-            query = query.filter_by(region=region_filter)
+            # Use trimmed comparison for whitespace tolerance
+            query = query.filter(db.func.trim(Client.region) == region_filter)
         if salesman_filter:
-            query = query.filter_by(salesman_name=salesman_filter)
+            query = query.filter(db.func.trim(Client.salesman_name) == salesman_filter)
         
         total_count = query.count()
         clients = query.order_by(Client.name, Client.id).offset((page - 1) * per_page).limit(per_page).all()
@@ -446,9 +447,9 @@ def search_clients(current_user):
             query = query.filter(Client.name.ilike(f'%{search_term}%'))
         
         if region_filter:
-            query = query.filter_by(region=region_filter)
+            query = query.filter(db.func.trim(Client.region) == region_filter)
         if salesman_filter:
-            query = query.filter_by(salesman_name=salesman_filter)
+            query = query.filter(db.func.trim(Client.salesman_name) == salesman_filter)
         
         total_count = query.count()
         clients = query.order_by(Client.name, Client.id).offset((page - 1) * per_page).limit(per_page).all()
