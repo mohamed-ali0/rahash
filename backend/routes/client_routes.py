@@ -131,7 +131,7 @@ def get_clients_list(current_user):
             query = query.filter_by(salesman_name=salesman_filter)
         
         total_count = query.count()
-        clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()
+        clients = query.order_by(Client.name, Client.id).offset((page - 1) * per_page).limit(per_page).all()
         
         clients_data = []
         for client in clients:
@@ -401,7 +401,7 @@ def search_clients(current_user):
             query = query.filter_by(salesman_name=salesman_filter)
         
         total_count = query.count()
-        clients = query.order_by(Client.name).offset((page - 1) * per_page).limit(per_page).all()
+        clients = query.order_by(Client.name, Client.id).offset((page - 1) * per_page).limit(per_page).all()
         
         clients_data = [{
             'id': c.id, 'name': c.name, 'region': c.region, 'location': c.location,

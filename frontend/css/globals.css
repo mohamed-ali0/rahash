@@ -4600,8 +4600,12 @@ html[lang="en"] .section-actions {
     .filter-group {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 15px;
+        /* Increased gap slightly for better touch targets */
         margin: 10px 0;
+        width: 100%;
+        align-items: stretch;
+        /* Force children to full width */
     }
 
     .filter-container {
@@ -4617,6 +4621,7 @@ html[lang="en"] .section-actions {
     }
 
     .search-container {
+        width: 100%;
         max-width: 100%;
         margin-bottom: 10px;
     }
@@ -4624,5 +4629,8 @@ html[lang="en"] .section-actions {
     .section-actions {
         display: flex;
         flex-direction: column;
+        align-items: stretch;
+        /* Force all children (search, filters, button) to full width */
+        width: 100%;
     }
 }
