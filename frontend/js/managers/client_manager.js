@@ -905,8 +905,11 @@ const ClientManager = {
     },
 
     filterClients: async function (searchTerm = '', selectedRegion = '', selectedSalesman = '') {
+        console.log('🔍 filterClients called with:', { searchTerm, selectedRegion, selectedSalesman });
+
         // If search term or filters are cleared, reload the full list with infinite scroll
         if (!searchTerm.trim() && !selectedRegion.trim() && !selectedSalesman.trim()) {
+            console.log('📋 No filters - loading all clients');
             const statusFilter = document.getElementById('clientStatusFilter');
             const currentStatus = statusFilter ? statusFilter.value : 'active';
             this.loadClients(currentStatus); // Reloads page 1 and re-enables infinite scroll
@@ -915,8 +918,10 @@ const ClientManager = {
 
         // If search term is provided, use backend search for ALL clients
         if (searchTerm.trim()) {
+            console.log('🔎 Searching with term:', searchTerm);
             await this.searchClients(searchTerm, selectedRegion, selectedSalesman);
         } else {
+            console.log('🏷️ Filtering by region/salesman only');
             // Only filters (no search) - use backend to get ALL filtered clients
             await this.loadFilteredClients(selectedRegion, selectedSalesman);
         }
@@ -938,6 +943,8 @@ const ClientManager = {
             if (selectedSalesman) {
                 apiUrl += `&salesman=${encodeURIComponent(selectedSalesman)}`;
             }
+
+            console.log('📡 Filter API URL:', apiUrl);
 
             const response = await fetch(apiUrl, {
                 headers: getAuthHeaders()
