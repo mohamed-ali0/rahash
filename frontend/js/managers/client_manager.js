@@ -619,6 +619,18 @@ const ClientManager = {
         input.onfocus = () => { showList(); };
         input.oninput = (e) => { renderList(e.target.value); list.classList.add('show'); };
 
+        // Clear Button Logic
+        const clearBtn = input.parentElement.querySelector('.clear-filter-btn');
+        if (clearBtn) {
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                input.value = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                input.focus();
+            };
+        }
+
         // Global listener logic
         if (!window.dropdownListenerAttached) {
             document.addEventListener('click', (e) => {
