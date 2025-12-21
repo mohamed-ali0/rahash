@@ -771,9 +771,24 @@ const ClientManager = {
             renderList(input.value);
         };
 
-        // Attach listeners
-        input.onclick = (e) => { e.stopPropagation(); showList(); };
-        input.onfocus = () => { showList(); };
+        // Attach listeners - First click shows list, double-click enables typing
+        // Prevent keyboard from opening on first click (better mobile UX)
+        input.setAttribute('readonly', 'true');  // Start as readonly to prevent keyboard
+
+        input.onclick = (e) => {
+            e.stopPropagation();
+            showList();
+            // Keep readonly on single click - just show the list
+        };
+
+        // Double-click enables typing mode
+        input.ondblclick = (e) => {
+            e.stopPropagation();
+            input.removeAttribute('readonly');  // Allow typing
+            input.focus();  // Now keyboard will open
+            showList();
+        };
+
         input.oninput = (e) => { renderList(e.target.value); list.classList.add('show'); };
 
         // Clear Button Logic
@@ -792,7 +807,12 @@ const ClientManager = {
         if (!window.dropdownListenerAttached) {
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.filter-container')) {
+                    // Close all dropdowns and reset readonly state
                     document.querySelectorAll('.custom-dropdown-list.show').forEach(el => el.classList.remove('show'));
+                    // Reset readonly on filter inputs for next interaction
+                    document.querySelectorAll('#regionFilter, #salesmanFilter').forEach(input => {
+                        input.setAttribute('readonly', 'true');
+                    });
                 }
             });
             window.dropdownListenerAttached = true;
