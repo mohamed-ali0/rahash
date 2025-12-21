@@ -127,18 +127,14 @@
                 </div>
                 <div class="filter-group">
                     <div class="filter-container">
-                        <input list="regionOptions" id="regionFilter" class="filter-input" placeholder="المنطقة"
-                            data-ar="المنطقة" data-en="Region">
-                        <datalist id="regionOptions">
-                            <!-- Options populated by JS -->
-                        </datalist>
+                        <input type="text" id="regionFilter" class="filter-input" placeholder="المنطقة"
+                            data-ar="المنطقة" data-en="Region" autocomplete="off">
+                        <div id="regionOptions" class="custom-dropdown-list"></div>
                     </div>
                     <div class="filter-container">
-                        <input list="salesmanOptions" id="salesmanFilter" class="filter-input" placeholder="المندوب"
-                            data-ar="المندوب" data-en="Salesman">
-                        <datalist id="salesmanOptions">
-                            <!-- Options populated by JS -->
-                        </datalist>
+                        <input type="text" id="salesmanFilter" class="filter-input" placeholder="المندوب"
+                            data-ar="المندوب" data-en="Salesman" autocomplete="off">
+                        <div id="salesmanOptions" class="custom-dropdown-list"></div>
                     </div>
                     <div class="filter-container">
                         <select id="clientStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة"

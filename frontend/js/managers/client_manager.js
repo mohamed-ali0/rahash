@@ -569,40 +569,75 @@ const ClientManager = {
         }
     },
 
+    setupCustomDropdown: function (inputId, listId, items) {
+        const input = document.getElementById(inputId);
+        const list = document.getElementById(listId);
+        if (!input || !list) return;
+
+        // Render List Function
+        const renderList = (filterText = '') => {
+            list.innerHTML = '';
+            const lowerFilter = filterText ? filterText.toLowerCase() : '';
+            const filtered = items.filter(item => item && String(item).toLowerCase().includes(lowerFilter));
+
+            // Limit for performance
+            const displayItems = filtered.slice(0, 1000);
+
+            displayItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'dropdown-option';
+                div.textContent = item;
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    input.value = item;
+                    list.classList.remove('show');
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                };
+                list.appendChild(div);
+            });
+
+            if (filtered.length === 0) {
+                const div = document.createElement('div');
+                div.className = 'dropdown-option';
+                div.style.color = '#999';
+                div.style.pointerEvents = 'none';
+                div.textContent = typeof currentLanguage !== 'undefined' && currentLanguage === 'ar' ? 'لا توجد نتائج' : 'No results';
+                list.appendChild(div);
+            }
+        };
+
+        const showList = () => {
+            document.querySelectorAll('.custom-dropdown-list.show').forEach(el => {
+                if (el !== list) el.classList.remove('show');
+            });
+            list.classList.add('show');
+            renderList(input.value);
+        };
+
+        // Attach listeners
+        input.onclick = (e) => { e.stopPropagation(); showList(); };
+        input.onfocus = () => { showList(); };
+        input.oninput = (e) => { renderList(e.target.value); list.classList.add('show'); };
+
+        // Global listener logic
+        if (!window.dropdownListenerAttached) {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.filter-container')) {
+                    document.querySelectorAll('.custom-dropdown-list.show').forEach(el => el.classList.remove('show'));
+                }
+            });
+            window.dropdownListenerAttached = true;
+        }
+    },
+
     populateRegionFilter: function (regions) {
-        const regionDatalist = document.getElementById('regionOptions');
-        if (!regionDatalist) return;
-
-        // Use the regions array directly (already unique from backend)
         this.allRegions = regions;
-
-        // Clear existing options
-        regionDatalist.innerHTML = '';
-
-        // Add region options
-        regions.forEach(region => {
-            const option = document.createElement('option');
-            option.value = region;
-            regionDatalist.appendChild(option);
-        });
+        this.setupCustomDropdown('regionFilter', 'regionOptions', regions);
     },
 
     populateSalesmanFilter: function (salesmen) {
-        const salesmanDatalist = document.getElementById('salesmanOptions');
-        if (!salesmanDatalist) return;
-
-        // Use the salesmen array directly (already unique from backend)
         this.allSalesmen = salesmen;
-
-        // Clear existing options
-        salesmanDatalist.innerHTML = '';
-
-        // Add salesman options
-        salesmen.forEach(salesman => {
-            const option = document.createElement('option');
-            option.value = salesman;
-            salesmanDatalist.appendChild(option);
-        });
+        this.setupCustomDropdown('salesmanFilter', 'salesmanOptions', salesmen);
     },
 
 
