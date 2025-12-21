@@ -2766,6 +2766,26 @@ html[lang="en"] .section-actions {
     margin: 0;
 }
 
+.expanded-description {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-right: 4px solid var(--primary-color);
+}
+
+.expanded-description .detail-label {
+    margin-bottom: 0.75rem;
+}
+
+.expanded-description .description-text {
+    margin: 0;
+    color: #495057;
+    line-height: 1.6;
+    font-size: 1rem;
+    white-space: pre-wrap;
+}
+
 .expanded-details {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -631,6 +631,13 @@ const ProductManager = {
                     <h2 class="expanded-title">${product.name}</h2>
                 </div>
                 
+                ${product.description ? `
+                <div class="expanded-description">
+                    <div class="detail-label">${currentLanguage === 'ar' ? 'وصف المنتج' : 'Product Description'}</div>
+                    <p class="description-text">${product.description}</p>
+                </div>
+                ` : ''}
+                
                 <div class="expanded-details">
                     <div class="detail-group">
                         <div class="detail-label">${currentLanguage === 'ar' ? 'سعر العميل (مع الضريبة)' : 'Client Price (With Tax)'}</div>
