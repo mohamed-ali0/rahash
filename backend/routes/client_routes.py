@@ -92,7 +92,11 @@ def get_client_filter_data(current_user):
             regions_result = db.session.execute(text("SELECT DISTINCT region FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id AND region IS NOT NULL AND region != '' ORDER BY region"), {'user_id': current_user.id}).fetchall()
             salesmen_result = db.session.execute(text("SELECT DISTINCT salesman_name FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id AND salesman_name IS NOT NULL AND salesman_name != '' ORDER BY salesman_name"), {'user_id': current_user.id}).fetchall()
         
-        return jsonify({'regions': [r[0] for r in regions_result], 'salesmen': [s[0] for s in salesmen_result]}), 200
+        # Deduplicate and strip whitespace
+        regions = sorted(list(set([r[0].strip() for r in regions_result if r[0] and r[0].strip()])))
+        salesmen = sorted(list(set([s[0].strip() for s in salesmen_result if s[0] and s[0].strip()])))
+
+        return jsonify({'regions': regions, 'salesmen': salesmen}), 200
     except Exception as e:
         return jsonify({'message': 'Failed to fetch filter data', 'error': str(e)}), 500
 

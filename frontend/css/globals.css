@@ -4595,4 +4595,34 @@ html[lang="en"] .section-actions {
     .filtered-clients-grid {
         grid-template-columns: 1fr;
     }
+
+    /* Fix filter layout on mobile */
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 10px 0;
+    }
+
+    .filter-container {
+        width: 100%;
+        margin: 0;
+    }
+
+    .filter-select,
+    .filter-input {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+    }
+
+    .search-container {
+        max-width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .section-actions {
+        display: flex;
+        flex-direction: column;
+    }
 }
