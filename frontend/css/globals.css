@@ -2382,7 +2382,8 @@ html[lang="en"] .section-actions {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
     width: 100%;
     padding: 0.75rem;
     border: 2px solid var(--background-light);
@@ -2390,6 +2391,7 @@ html[lang="en"] .section-actions {
     font-size: 1rem;
     font-family: inherit;
     transition: all 0.3s ease;
+    resize: vertical;
 }
 
 .form-group input[type="file"] {
@@ -2412,7 +2414,8 @@ html[lang="en"] .section-actions {
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(151, 210, 192, 0.1);
