@@ -62,6 +62,7 @@ def get_single_product(current_user, product_id):
         
         return jsonify({
             'id': product.id, 'name': product.name,
+            'description': product.description or '',
             'taxed_price_store': float(product.taxed_price_store) if product.taxed_price_store else 0.0,
             'untaxed_price_store': float(product.untaxed_price_store) if product.untaxed_price_store else 0.0,
             'taxed_price_client': float(product.taxed_price_client) if product.taxed_price_client else 0.0,
@@ -165,6 +166,7 @@ def update_product(current_user, product_id):
         data = request.get_json()
         
         if 'name' in data: product.name = data['name']
+        if 'description' in data: product.description = data['description']
         if 'taxed_price_store' in data: product.taxed_price_store = data['taxed_price_store']
         if 'untaxed_price_store' in data: product.untaxed_price_store = data['untaxed_price_store']
         if 'taxed_price_client' in data: product.taxed_price_client = data['taxed_price_client']

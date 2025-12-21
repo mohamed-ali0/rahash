@@ -8,6 +8,7 @@ class Product(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)  # Product description
     taxed_price_store = db.Column(db.Numeric(10, 2))
     untaxed_price_store = db.Column(db.Numeric(10, 2))
     taxed_price_client = db.Column(db.Numeric(10, 2))

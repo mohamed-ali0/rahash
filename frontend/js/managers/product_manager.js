@@ -331,6 +331,10 @@ const ProductManager = {
                             <label>${currentLanguage === 'ar' ? 'اسم المنتج' : 'Product Name'}</label>
                             <input type="text" id="editProductName" value="${product.name || ''}" required>
                         </div>
+                        <div class="form-group">
+                            <label>${currentLanguage === 'ar' ? 'وصف المنتج' : 'Product Description'}</label>
+                            <textarea id="editProductDescription" rows="3" placeholder="${currentLanguage === 'ar' ? 'أدخل وصف المنتج...' : 'Enter product description...'}">${product.description || ''}</textarea>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>${currentLanguage === 'ar' ? 'سعر العميل (شامل)' : 'Client Price (Tax Inc.)'}</label>
@@ -459,6 +463,7 @@ const ProductManager = {
 
         const productData = {
             name: getStringValue('editProductName'),
+            description: getStringValue('editProductDescription'),
             taxed_price_store: getValue('editTaxedPriceStore'),
             untaxed_price_store: getValue('editUntaxedPriceStore'),
             taxed_price_client: getValue('editTaxedPriceClient'),
