@@ -70,6 +70,24 @@ def get_client_filter_data(current_user):
         if current_user.role == UserRole.SUPER_ADMIN:
             regions_result = db.session.execute(text("SELECT DISTINCT region FROM clients WHERE is_active = 1 AND region IS NOT NULL AND region != '' ORDER BY region")).fetchall()
             salesmen_result = db.session.execute(text("SELECT DISTINCT salesman_name FROM clients WHERE is_active = 1 AND salesman_name IS NOT NULL AND salesman_name != '' ORDER BY salesman_name")).fetchall()
+        elif current_user.role == UserRole.SALES_SUPERVISOR:
+            # For supervisors, get regions/salesmen from ALL clients in their team (themselves + their salesmen)
+            query_regions = text("""
+                SELECT DISTINCT c.region FROM clients c
+                LEFT JOIN users u ON c.assigned_user_id = u.id
+                WHERE c.is_active = 1 AND c.region IS NOT NULL AND c.region != ''
+                AND (c.assigned_user_id = :user_id OR u.supervisor_id = :user_id)
+                ORDER BY c.region
+            """)
+            query_salesmen = text("""
+                SELECT DISTINCT c.salesman_name FROM clients c
+                LEFT JOIN users u ON c.assigned_user_id = u.id
+                WHERE c.is_active = 1 AND c.salesman_name IS NOT NULL AND c.salesman_name != ''
+                AND (c.assigned_user_id = :user_id OR u.supervisor_id = :user_id)
+                ORDER BY c.salesman_name
+            """)
+            regions_result = db.session.execute(query_regions, {'user_id': current_user.id}).fetchall()
+            salesmen_result = db.session.execute(query_salesmen, {'user_id': current_user.id}).fetchall()
         else:
             regions_result = db.session.execute(text("SELECT DISTINCT region FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id AND region IS NOT NULL AND region != '' ORDER BY region"), {'user_id': current_user.id}).fetchall()
             salesmen_result = db.session.execute(text("SELECT DISTINCT salesman_name FROM clients WHERE is_active = 1 AND assigned_user_id = :user_id AND salesman_name IS NOT NULL AND salesman_name != '' ORDER BY salesman_name"), {'user_id': current_user.id}).fetchall()
