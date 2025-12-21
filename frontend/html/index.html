@@ -127,16 +127,18 @@
                 </div>
                 <div class="filter-group">
                     <div class="filter-container">
-                        <select id="regionFilter" class="filter-select" data-ar="تصفية حسب المنطقة"
-                            data-en="Filter by region">
-                            <option value="" data-ar="جميع المناطق" data-en="All Regions">جميع المناطق</option>
-                        </select>
+                        <input list="regionOptions" id="regionFilter" class="filter-input"
+                            placeholder="تصفية حسب المنطقة" data-ar="تصفية حسب المنطقة" data-en="Filter by region">
+                        <datalist id="regionOptions">
+                            <!-- Options populated by JS -->
+                        </datalist>
                     </div>
                     <div class="filter-container">
-                        <select id="salesmanFilter" class="filter-select" data-ar="تصفية حسب المندوب"
-                            data-en="Filter by salesman">
-                            <option value="" data-ar="جميع المندوبين" data-en="All Salesmen">جميع المندوبين</option>
-                        </select>
+                        <input list="salesmanOptions" id="salesmanFilter" class="filter-input"
+                            placeholder="تصفية حسب المندوب" data-ar="تصفية حسب المندوب" data-en="Filter by salesman">
+                        <datalist id="salesmanOptions">
+                            <!-- Options populated by JS -->
+                        </datalist>
                     </div>
                     <div class="filter-container">
                         <select id="clientStatusFilter" class="filter-select" data-ar="تصفية حسب الحالة"

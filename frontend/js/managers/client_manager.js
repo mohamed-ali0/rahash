@@ -570,55 +570,41 @@ const ClientManager = {
     },
 
     populateRegionFilter: function (regions) {
-        const regionFilter = document.getElementById('regionFilter');
-        if (!regionFilter) return;
+        const regionDatalist = document.getElementById('regionOptions');
+        if (!regionDatalist) return;
 
         // Use the regions array directly (already unique from backend)
         this.allRegions = regions;
 
-        // Clear existing options except the first one (All Regions)
-        regionFilter.innerHTML = `
-            <option value="" data-ar="جميع المناطق" data-en="All Regions">${currentLanguage === 'ar' ? 'جميع المناطق' : 'All Regions'}</option>
-        `;
+        // Clear existing options
+        regionDatalist.innerHTML = '';
 
         // Add region options
         regions.forEach(region => {
             const option = document.createElement('option');
             option.value = region;
-            option.textContent = region;
-            regionFilter.appendChild(option);
+            regionDatalist.appendChild(option);
         });
     },
 
     populateSalesmanFilter: function (salesmen) {
-        const salesmanFilter = document.getElementById('salesmanFilter');
-        if (!salesmanFilter) {
-            console.error('Salesman filter element not found');
-            return;
-        }
+        const salesmanDatalist = document.getElementById('salesmanOptions');
+        if (!salesmanDatalist) return;
 
         // Use the salesmen array directly (already unique from backend)
         this.allSalesmen = salesmen;
 
-        // Clear existing options completely
-        salesmanFilter.innerHTML = '';
-
-        // Add default option
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = currentLanguage === 'ar' ? 'جميع المندوبين' : 'All Salesmen';
-        salesmanFilter.appendChild(defaultOption);
+        // Clear existing options
+        salesmanDatalist.innerHTML = '';
 
         // Add salesman options
         salesmen.forEach(salesman => {
             const option = document.createElement('option');
             option.value = salesman;
-            option.textContent = salesman;
-            salesmanFilter.appendChild(option);
+            salesmanDatalist.appendChild(option);
         });
-
-        console.log('Salesman filter populated with:', salesmen);
     },
+
 
     displayClients: function (clients, append = false) {
         const clientsList = document.getElementById('clientsList');
