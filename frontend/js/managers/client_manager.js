@@ -281,6 +281,136 @@ const ClientManager = {
         }
     },
 
+    showBatchEditModal: function () {
+        // CAPTURE client IDs NOW, before anything can change them
+        const clientsToEdit = this.currentClients ? [...this.currentClients] : [];
+        const clientCount = clientsToEdit.length;
+
+        if (clientCount === 0) {
+            alert(currentLanguage === 'ar' ? 'لا يوجد عملاء للتعديل' : 'No clients to edit');
+            return;
+        }
+
+        // Store the IDs for use when Apply is clicked
+        this.batchEditClientIds = clientsToEdit.map(c => c.id);
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h3>${currentLanguage === 'ar' ? 'تعديل جماعي' : 'Batch Edit'}</h3>
+                    <button class="js-modal-close">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <p style="margin-bottom: 15px; color: #666;">
+                        ${currentLanguage === 'ar'
+                ? `سيتم تطبيق التعديلات على <strong>${clientCount}</strong> عميل معروض حالياً`
+                : `Changes will be applied to <strong>${clientCount}</strong> currently displayed clients`}
+                    </p>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label>${currentLanguage === 'ar' ? 'الحقل للتعديل' : 'Field to Update'}</label>
+                        <select id="batchEditField" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                            <option value="">${currentLanguage === 'ar' ? '-- اختر الحقل --' : '-- Select Field --'}</option>
+                            <option value="region">${currentLanguage === 'ar' ? 'المنطقة' : 'Region'}</option>
+                            <option value="salesman_name">${currentLanguage === 'ar' ? 'اسم المندوب' : 'Salesman Name'}</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>${currentLanguage === 'ar' ? 'القيمة الجديدة' : 'New Value'}</label>
+                        <input type="text" id="batchEditValue" class="form-control" placeholder="${currentLanguage === 'ar' ? 'أدخل القيمة الجديدة' : 'Enter new value'}" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" onclick="ClientManager.applyBatchEdit()" style="flex: 1;">
+                            ${currentLanguage === 'ar' ? 'تطبيق على الكل' : 'Apply to All'}
+                        </button>
+                        <button class="btn btn-secondary js-modal-close" style="flex: 1;">
+                            ${currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Close modal handlers
+        modal.querySelectorAll('.js-modal-close').forEach(btn => {
+            btn.onclick = () => {
+                this.batchEditClientIds = null; // Clear stored IDs
+                modal.remove();
+            };
+        });
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                this.batchEditClientIds = null;
+                modal.remove();
+            }
+        };
+    },
+
+    applyBatchEdit: async function () {
+        const field = document.getElementById('batchEditField').value;
+        const value = document.getElementById('batchEditValue').value.trim();
+
+        if (!field) {
+            alert(currentLanguage === 'ar' ? 'يرجى اختيار الحقل' : 'Please select a field');
+            return;
+        }
+
+        // Use the IDs captured when modal was opened
+        const clientIds = this.batchEditClientIds || [];
+        if (clientIds.length === 0) {
+            alert(currentLanguage === 'ar' ? 'لا يوجد عملاء للتعديل' : 'No clients to update');
+            return;
+        }
+
+        const confirmMsg = currentLanguage === 'ar'
+            ? `هل أنت متأكد من تعديل ${clientIds.length} عميل؟`
+            : `Are you sure you want to update ${clientIds.length} clients?`;
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const updates = {};
+            updates[field] = value || null;
+
+            const response = await fetch(`${API_BASE_URL}/clients/batch-update`, {
+                method: 'PUT',
+                headers: {
+                    ...getAuthHeaders(),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    client_ids: clientIds,
+                    updates: updates
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(currentLanguage === 'ar'
+                    ? `تم تعديل ${data.updated_count} عميل بنجاح`
+                    : `Successfully updated ${data.updated_count} clients`);
+
+                // Close modal and reload
+                this.batchEditClientIds = null;
+                document.querySelector('.modal-overlay')?.remove();
+                this.loadClients(this.currentStatusFilter || 'active');
+                this.loadFilterData(); // Refresh filter options
+            } else {
+                const errorData = await response.json();
+                alert(currentLanguage === 'ar' ? 'فشل التعديل: ' + errorData.message : 'Update failed: ' + errorData.message);
+            }
+        } catch (error) {
+            console.error('Batch update error:', error);
+            alert(currentLanguage === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Server connection error');
+        }
+    },
+
     loadClients: async function (statusFilter = 'active') {
         try {
             // Show loading state immediately

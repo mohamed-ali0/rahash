@@ -20,7 +20,7 @@ def get_products_list(current_user):
         
         query = Product.query
         total_count = query.count()
-        products = query.order_by(Product.name).offset((page - 1) * per_page).limit(per_page).all()
+        products = query.order_by(Product.name, Product.id).offset((page - 1) * per_page).limit(per_page).all()
         
         products_data = [{
             'id': p.id, 'name': p.name,

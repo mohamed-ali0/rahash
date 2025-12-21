@@ -319,6 +319,56 @@ def update_client(current_user, client_id):
         db.session.rollback()
         return jsonify({'message': 'Failed to update client', 'error': str(e)}), 500
 
+# ==================== BATCH UPDATE ROUTE ====================
+
+@client_bp.route('/batch-update', methods=['PUT'])
+@token_required
+def batch_update_clients(current_user):
+    """Batch update multiple clients (region/salesman)"""
+    try:
+        # Only Super Admin and Sales Supervisor can batch update
+        if current_user.role not in [UserRole.SUPER_ADMIN, UserRole.SALES_SUPERVISOR]:
+            return jsonify({'message': 'Permission denied'}), 403
+        
+        data = request.get_json()
+        client_ids = data.get('client_ids', [])
+        updates = data.get('updates', {})
+        
+        if not client_ids:
+            return jsonify({'message': 'No clients specified'}), 400
+        if not updates:
+            return jsonify({'message': 'No updates specified'}), 400
+        
+        # Build query based on role
+        if current_user.role == UserRole.SUPER_ADMIN:
+            clients = Client.query.filter(Client.id.in_(client_ids)).all()
+        else:
+            # Sales Supervisor can only update their team's clients
+            salesmen = User.query.filter_by(supervisor_id=current_user.id, role=UserRole.SALESMAN).all()
+            salesman_ids = [s.id for s in salesmen] + [current_user.id]
+            clients = Client.query.filter(
+                Client.id.in_(client_ids),
+                Client.assigned_user_id.in_(salesman_ids)
+            ).all()
+        
+        if not clients:
+            return jsonify({'message': 'No clients found to update'}), 404
+        
+        # Apply updates
+        updated_count = 0
+        for client in clients:
+            if 'region' in updates and updates['region'] is not None:
+                client.region = updates['region'].strip() if updates['region'] else None
+            if 'salesman_name' in updates and updates['salesman_name'] is not None:
+                client.salesman_name = updates['salesman_name'].strip() if updates['salesman_name'] else None
+            updated_count += 1
+        
+        db.session.commit()
+        return jsonify({'message': f'Updated {updated_count} clients successfully', 'updated_count': updated_count}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to batch update clients', 'error': str(e)}), 500
+
 # ==================== DELETE ROUTE ====================
 
 @client_bp.route('/<int:client_id>', methods=['DELETE'])

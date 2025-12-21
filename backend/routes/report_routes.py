@@ -33,7 +33,7 @@ def get_reports_list(current_user):
                 query = query.filter_by(is_active=True)
         
         total_count = query.count()
-        reports = query.order_by(VisitReport.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        reports = query.order_by(VisitReport.created_at.desc(), VisitReport.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         
         reports_data = []
         for report in reports:
@@ -423,7 +423,7 @@ def search_reports(current_user):
             query = query.join(Client).filter(Client.name.ilike(f'%{search_term}%'))
         
         total_count = query.count()
-        reports = query.order_by(VisitReport.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        reports = query.order_by(VisitReport.created_at.desc(), VisitReport.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         
         reports_data = [{'id': r.id, 'client_name': r.client.name if r.client else 'Unknown',
             'visit_date': r.visit_date.isoformat(), 'is_active': r.is_active} for r in reports]
