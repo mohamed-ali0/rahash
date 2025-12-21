@@ -412,6 +412,8 @@ const ClientManager = {
     },
 
     loadClients: async function (statusFilter = 'active') {
+        console.log('⚠️ loadClients called with:', statusFilter);
+        console.trace('Call stack for loadClients:');
         try {
             // Show loading state immediately
             const clientsList = document.getElementById('clientsList');
