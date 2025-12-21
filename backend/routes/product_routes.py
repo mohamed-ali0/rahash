@@ -8,6 +8,29 @@ import base64
 
 product_bp = Blueprint('products', __name__, url_prefix='/api/products')
 
+# ==================== PUBLIC ROUTES (No Auth) ====================
+
+@product_bp.route('/catalogue', methods=['GET'])
+def get_products_for_catalogue():
+    """Public endpoint for catalogue - no auth required"""
+    try:
+        products = Product.query.order_by(Product.name, Product.id).all()
+        
+        products_data = [{
+            'id': p.id, 
+            'name': p.name,
+            'description': p.description or '',
+            'taxed_price_store': float(p.taxed_price_store) if p.taxed_price_store else 0.0,
+            'untaxed_price_store': float(p.untaxed_price_store) if p.untaxed_price_store else 0.0,
+            'taxed_price_client': float(p.taxed_price_client) if p.taxed_price_client else 0.0,
+            'untaxed_price_client': float(p.untaxed_price_client) if p.untaxed_price_client else 0.0,
+            'thumbnail': base64.b64encode(p.thumbnail).decode('utf-8') if p.thumbnail else None
+        } for p in products]
+        
+        return jsonify({'products': products_data, 'total': len(products_data)}), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch products', 'error': str(e)}), 500
+
 # ==================== GET ROUTES ====================
 
 @product_bp.route('/list', methods=['GET'])

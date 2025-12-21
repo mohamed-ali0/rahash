@@ -70,3 +70,14 @@ def app_pages():
     """Serve main app page for all routes (SPA routing)"""
     from flask import current_app
     return current_app.send_static_file('html/index.html')
+
+@static_bp.route('/catalogue')
+def catalogue_page():
+    """Serve catalogue page"""
+    from flask import current_app
+    return current_app.send_static_file('html/catalogue.html')
+
+@static_bp.route('/catalogue/<path:filename>')
+def catalogue_assets(filename):
+    """Serve catalogue assets (background, frames, logo)"""
+    return send_file(f'catalogue/{filename}')

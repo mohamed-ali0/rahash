@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Catalogue - كتالوج المنتجات</title>
+    <style>
+        /* ========== CONFIGURABLE SETTINGS ========== */
+        :root {
+            /* Page dimensions (A4 or custom) */
+            --page-width: 1080px;
+            --page-height: 1080px;
+
+            /* Logo position and size */
+            --logo-top: 20px;
+            --logo-right: 30px;
+            --logo-width: 180px;
+
+            /* Product image frame position and size */
+            --image-frame-top: 180px;
+            --image-frame-left: 50px;
+            --image-frame-size: 450px;
+
+            /* Product info position (name, description) */
+            --info-top: 200px;
+            --info-right: 60px;
+            --info-width: 450px;
+
+            /* Price container (single frame with 4 prices inside) */
+            --price-container-top: 550px;
+            --price-container-right: 80px;
+            --price-container-width: 350px;
+            --price-container-height: 350px;
+
+            /* Text styles */
+            --title-size: 2.5rem;
+            --title-color: #1a3b5d;
+            --desc-size: 1rem;
+            --desc-color: #4a5568;
+            --price-label-size: 0.7rem;
+            --price-value-size: 0.85rem;
+        }
+
+        /* ========== BASE STYLES ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+            background: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* ========== CONTROLS ========== */
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .controls button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #1a3b5d, #2d5a87);
+            color: white;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26, 59, 93, 0.3);
+        }
+
+        .btn-nav {
+            background: linear-gradient(135deg, #c9a227, #e6be3a);
+            color: #1a3b5d;
+        }
+
+        .product-counter {
+            padding: 12px 24px;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #1a3b5d;
+        }
+
+        /* ========== CATALOGUE PAGE ========== */
+        .catalogue-page {
+            width: var(--page-width);
+            height: var(--page-height);
+            position: relative;
+            background-image: url('/catalogue/background.jpg');
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            margin-bottom: 40px;
+            overflow: hidden;
+        }
+
+        /* Logo */
+        .catalogue-logo {
+            position: absolute;
+            top: var(--logo-top);
+            right: var(--logo-right);
+            width: var(--logo-width);
+            height: auto;
+            z-index: 10;
+        }
+
+        /* Product Image Frame Container */
+        .image-frame-container {
+            position: absolute;
+            top: var(--image-frame-top);
+            left: var(--image-frame-left);
+            width: var(--image-frame-size);
+            height: var(--image-frame-size);
+        }
+
+        /* Product Image (clipped to diamond shape - fills entire frame) */
+        .product-image-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .product-image-wrapper img {
+            width: 140%;
+            height: 140%;
+            object-fit: cover;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Frame overlay (on top of clipped image) */
+        .image-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/catalogue/image-frame.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* Product Info Section */
+        .product-info {
+            position: absolute;
+            top: var(--info-top);
+            right: var(--info-right);
+            width: var(--info-width);
+            text-align: right;
+            z-index: 5;
+        }
+
+        .product-name {
+            font-size: var(--title-size);
+            font-weight: 700;
+            color: var(--title-color);
+            line-height: 1.3;
+            margin-bottom: 20px;
+        }
+
+        .product-description {
+            font-size: var(--desc-size);
+            color: var(--desc-color);
+            line-height: 1.8;
+            text-align: justify;
+            direction: rtl;
+        }
+
+        /* Price Container - Single frame with all 4 prices */
+        .price-container {
+            position: absolute;
+            top: var(--price-container-top);
+            right: var(--price-container-right);
+            width: var(--price-container-width);
+            height: var(--price-container-height);
+            background-image: url('/catalogue/price_frame.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 10;
+        }
+
+        /* Price grid inside container */
+        .price-grid-inner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 70%;
+        }
+
+        .price-item {
+            text-align: center;
+            color: #1a3b5d;
+        }
+
+        .price-label {
+            font-size: var(--price-label-size);
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .price-value {
+            font-size: var(--price-value-size);
+            font-weight: 700;
+        }
+
+        /* ========== PRINT STYLES ========== */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .controls {
+                display: none !important;
+            }
+
+            .catalogue-page {
+                box-shadow: none;
+                margin: 0;
+                page-break-after: always;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .catalogue-page:last-child {
+                page-break-after: auto;
+            }
+        }
+
+        @page {
+            size: 1080px 1080px;
+            margin: 0;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Controls (hidden when printing) -->
+    <div class="controls">
+        <button class="btn-print" onclick="window.print()">🖨️ طباعة الكتالوج</button>
+        <button class="btn-nav" onclick="prevProduct()">◀ السابق</button>
+        <span class="product-counter" id="counter">1 / 1</span>
+        <button class="btn-nav" onclick="nextProduct()">التالي ▶</button>
+    </div>
+
+    <!-- Catalogue Pages Container -->
+    <div id="catalogue-container">
+        <!-- Pages will be generated here by JavaScript -->
+    </div>
+
+    <script>
+        // ========== CONFIGURATION ==========
+        const CONFIG = {
+            // API Base URL
+            apiBaseUrl: 'http://localhost:5009/api',
+
+            // Price labels (Arabic)
+            priceLabels: {
+                taxed_price_store: 'سعر العميل (شامل)',
+                untaxed_price_store: 'سعر العميل (بدون)',
+                taxed_price_client: 'سعر المحل (شامل)',
+                untaxed_price_client: 'سعر المحل (بدون)'
+            },
+
+            // Currency
+            currency: 'ر.س'
+        };
+
+        let products = [];
+        let currentIndex = 0;
+
+        // ========== GENERATE CATALOGUE PAGE HTML ==========
+        function generateCataloguePage(product) {
+            // Get product image (thumbnail or placeholder)
+            const productImage = product.thumbnail
+                ? `data:image/jpeg;base64,${product.thumbnail}`
+                : '/catalogue/logo.png';
+
+            return `
+                <div class="catalogue-page" data-product-id="${product.id}">
+                    <!-- Logo -->
+                    <img src="/catalogue/logo.png" alt="Logo" class="catalogue-logo">
+                    
+                    <!-- Product Image with Frame -->
+                    <div class="image-frame-container">
+                        <div class="product-image-wrapper">
+                            <img src="${productImage}" alt="${product.name}">
+                        </div>
+                        <div class="image-frame"></div>
+                    </div>
+                    
+                    <!-- Product Info -->
+                    <div class="product-info">
+                        <h1 class="product-name">${product.name}</h1>
+                        <p class="product-description">${product.description || ''}</p>
+                    </div>
+                    
+                    <!-- Price Container (Single frame with 4 prices) -->
+                    <div class="price-container">
+                        <div class="price-grid-inner">
+                            <div class="price-item">
+                                <div class="price-label">${CONFIG.priceLabels.taxed_price_store}</div>
+                                <div class="price-value">${formatPrice(product.taxed_price_store)}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${CONFIG.priceLabels.untaxed_price_store}</div>
+                                <div class="price-value">${formatPrice(product.untaxed_price_store)}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${CONFIG.priceLabels.taxed_price_client}</div>
+                                <div class="price-value">${formatPrice(product.taxed_price_client)}</div>
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">${CONFIG.priceLabels.untaxed_price_client}</div>
+                                <div class="price-value">${formatPrice(product.untaxed_price_client)}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========== FORMAT PRICE ==========
+        function formatPrice(price) {
+            if (!price && price !== 0) return '0.00 ' + CONFIG.currency;
+            return parseFloat(price).toFixed(2) + ' ' + CONFIG.currency;
+        }
+
+        // ========== NAVIGATION ==========
+        function showProduct(index) {
+            const pages = document.querySelectorAll('.catalogue-page');
+            pages.forEach((page, i) => {
+                page.style.display = i === index ? 'block' : 'none';
+            });
+            currentIndex = index;
+            updateCounter();
+        }
+
+        function nextProduct() {
+            if (currentIndex < products.length - 1) {
+                showProduct(currentIndex + 1);
+            }
+        }
+
+        function prevProduct() {
+            if (currentIndex > 0) {
+                showProduct(currentIndex - 1);
+            }
+        }
+
+        function updateCounter() {
+            document.getElementById('counter').textContent =
+                `${currentIndex + 1} / ${products.length}`;
+        }
+
+        // ========== LOAD PRODUCTS ==========
+        async function loadProducts() {
+            try {
+                // Public catalogue endpoint - no auth required
+                const response = await fetch(`${CONFIG.apiBaseUrl}/products/catalogue`, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load products');
+                }
+
+                const data = await response.json();
+                products = data.products || data;
+
+                // Generate catalogue pages
+                const container = document.getElementById('catalogue-container');
+                container.innerHTML = products.map(p => generateCataloguePage(p)).join('');
+
+                // Show first product
+                if (products.length > 0) {
+                    showProduct(0);
+                }
+
+            } catch (error) {
+                console.error('Error loading products:', error);
+                document.getElementById('catalogue-container').innerHTML = `
+                    <div style="padding: 50px; text-align: center; color: #666;">
+                        <h2>خطأ في تحميل المنتجات</h2>
+                        <p>يرجى التأكد من تسجيل الدخول</p>
+                        <p style="color: #999; font-size: 0.9rem;">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // ========== KEYBOARD NAVIGATION ==========
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') prevProduct();
+            if (e.key === 'ArrowLeft') nextProduct();
+        });
+
+        // ========== INIT ==========
+        loadProducts();
+    </script>
+</body>
+
+</html>
